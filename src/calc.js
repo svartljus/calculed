@@ -76,3 +76,14 @@ export function recommendFuse(currentA) {
   const target = currentA * 1.25;
   return FUSE_SIZES_A.find(s => s >= target) ?? FUSE_SIZES_A.at(-1);
 }
+
+export function dataRecommendation(strip, chip) {
+  const isSpi = chip.protocol.startsWith('2-wire');
+  const out = {
+    levelShifter: isSpi ? 'not needed (SPI)' : 'recommended',
+    resistor: '330–500 Ω in series at strip start',
+    dataRunWarning: strip.dataRunMeters > 3,
+  };
+  if (chip.id === 'ws2815') out.note = 'often works without a level shifter';
+  return out;
+}
