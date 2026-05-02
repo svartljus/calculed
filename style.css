@@ -9,10 +9,8 @@
 
 body {
   margin: 0;
-  padding: 1rem;
+  padding: 1rem clamp(1rem, 3vw, 2rem);
   padding-bottom: 5rem;
-  max-width: 52rem;
-  margin-inline: auto;
 }
 
 main { display: grid; gap: 0.75rem; }
@@ -51,8 +49,10 @@ fieldset {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0.3rem;
+  gap: 0.4rem 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
+legend { grid-column: 1 / -1; }
 
 legend {
   padding: 0;
@@ -97,12 +97,15 @@ label:has(> input:disabled) { color: var(--muted); }
 
 [data-results] {
   display: grid;
-  grid-template-columns: 1fr 11rem;
-  gap: 0.75rem;
+  grid-template-columns: 1fr minmax(10rem, 14rem);
+  gap: 1rem;
   align-items: start;
   padding-top: 0.55rem;
   margin-top: 0.25rem;
   border-top: var(--rule);
+}
+@media (max-width: 30rem) {
+  [data-results] { grid-template-columns: 1fr; }
 }
 [data-results] dl {
   margin: 0;
