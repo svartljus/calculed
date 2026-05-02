@@ -131,6 +131,9 @@ function paintCard(card, strip) {
 
   const svg = card.querySelector('[data-drop-viz]');
   drawDropViz(svg, strip, chip, inj);
+
+  const brightLabel = card.querySelector('label:has(> input[name="brightness"])');
+  if (brightLabel) brightLabel.dataset.printValue = `value: ${strip.brightness}/255`;
 }
 
 function paintTotals() {
@@ -183,6 +186,8 @@ resetDialog.addEventListener('close', () => {
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
 });
+
+document.getElementById('print').addEventListener('click', () => window.print());
 
 function drawDropViz(svg, strip, chip, inj) {
   const W = 200, H = 80, PAD = 10;
