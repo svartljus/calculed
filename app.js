@@ -1,6 +1,5 @@
-import { CHIPS, DEFAULT_CHIP_ID } from './src/chips.js';
+import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals } from './src/calc.js';
-import { getChip } from './src/chips.js';
 
 const stripsList = document.getElementById('strips');
 const tpl = document.getElementById('strip-template');
@@ -156,7 +155,8 @@ function drawDropViz(svg, strip, chip, inj) {
     const segLen = 100 / nFeeds;
     const pts = [];
     for (let i = 0; i <= 100; i++) {
-      const intoSeg = (i % segLen) / segLen;
+      const segIdx = Math.min(Math.floor(i / segLen), nFeeds - 1);
+      const intoSeg = (i - segIdx * segLen) / segLen;   // 0..1, hits 1 at segment end
       // drop within a segment grows like x * (1 - x/2) * vDrop_singleFeed/(nFeeds^2) — approximate as parabola
       const norm = (intoSeg * (2 - intoSeg)) / 2;
       const dropFrac = norm * (inj.vDrop_singleFeed_V / (nFeeds * nFeeds)) / inj.maxDrop_V;
@@ -166,6 +166,7 @@ function drawDropViz(svg, strip, chip, inj) {
   }
 
   svg.innerHTML = `
+    <title>Voltage drop along strip: faded line is single feed, solid line is ${inj.nFeeds}-feed</title>
     <line x1="${PAD}" y1="${H - PAD}" x2="${W - PAD}" y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
     <line x1="${PAD}" y1="${PAD}"     x2="${PAD}"     y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
     <polyline fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1" points="${curve(1)}"/>

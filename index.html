@@ -9,9 +9,9 @@
 <body>
   <main>
     <form id="project">
-      <ol id="strips"></ol>
+      <ul id="strips"></ul>
       <button type="button" id="add-strip">+ Add strip</button>
-      <button type="button" id="reset">Reset</button>
+      <button type="button" id="reset" disabled>Reset</button>
     </form>
 
     <footer id="totals">
@@ -20,7 +20,7 @@
         <dt>Recommended PSU</dt> <dd><output name="psuRec">0</output> W</dd>
         <dt>Total LEDs</dt>      <dd><output name="totalLeds">0</output></dd>
       </dl>
-      <button type="button" id="print">Print BOM</button>
+      <button type="button" id="print" disabled>Print BOM</button>
     </footer>
 
     <details id="footnote">
@@ -87,7 +87,7 @@
             <dt>Fuse</dt>         <dd><output name="fuse">—</output> A</dd>
             <dt>Data</dt>         <dd><output name="dataNote">—</output></dd>
           </dl>
-          <svg data-drop-viz width="100%" height="80" viewBox="0 0 200 80"></svg>
+          <svg data-drop-viz role="img" width="100%" height="80" viewBox="0 0 200 80"></svg>
         </section>
       </article>
     </li>
