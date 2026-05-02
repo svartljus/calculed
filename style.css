@@ -154,15 +154,21 @@ label:has(> input:disabled) { color: var(--muted); }
 [data-results] .stats dt { color: var(--muted); margin: 0; }
 [data-results] .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
 
-/* Detail rows — traditional dt/dd grid for the wider items */
+/* Detail rows — flow into multiple columns on wide screens */
 [data-results] .details {
   margin: 0;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  column-gap: 1rem;
-  row-gap: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 2rem;
 }
-[data-results] .details dt { color: var(--muted); }
+[data-results] .details > div {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+[data-results] .details dt { color: var(--muted); margin: 0; flex-shrink: 0; }
 [data-results] .details dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
 [data-results] .details dd strong { font-weight: 700; }
 

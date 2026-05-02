@@ -131,7 +131,7 @@ function paintCard(card, strip) {
   $('pixels').value   = intOrDash(draw.pixels);
   $('ledCount').value = intOrDash(draw.ledCount);
   $('current').value  = fmt(draw.current_A);
-  $('power').value    = fmt(draw.power_W);
+  $('power').value    = fmt(draw.power_W, 1);
 
   // Inject summary
   const dropPerSeg = inj.vDrop_singleFeed_V / (inj.nFeeds * inj.nFeeds);
