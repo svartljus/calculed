@@ -124,3 +124,20 @@ function syncFromDom() {
 document.getElementById('project').addEventListener('input', syncFromDom);
 render();
 syncFromDom();
+
+document.getElementById('add-strip').addEventListener('click', () => {
+  const strip = makeDefaultStrip();
+  project.strips.push(strip);
+  stripsList.appendChild(renderStrip(strip));
+  syncFromDom();
+});
+
+stripsList.addEventListener('click', (e) => {
+  if (e.target.matches('button[data-action="remove"]')) {
+    const li = e.target.closest('li');
+    const id = li.querySelector('article').dataset.id;
+    project.strips = project.strips.filter(s => s.id !== id);
+    li.remove();
+    paintTotals();
+  }
+});
