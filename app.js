@@ -102,6 +102,9 @@ function paintCard(card, strip) {
     data.dataRunWarning ? '⚠ data run > 3 m — keep it short or buffer the signal' : '',
   ].filter(Boolean).join(' · ');
   $('dataNote').value = dataLine;
+
+  const svg = card.querySelector('[data-drop-viz]');
+  drawDropViz(svg, strip, chip, inj);
 }
 
 function paintTotals() {
@@ -141,3 +144,32 @@ stripsList.addEventListener('click', (e) => {
     paintTotals();
   }
 });
+
+function drawDropViz(svg, strip, chip, inj) {
+  const W = 200, H = 80, PAD = 10;
+  const xs = i => PAD + (W - 2 * PAD) * (i / 100);
+  const ys = v => H - PAD - (H - 2 * PAD) * v;     // v: 0..1 = full drop
+
+  // Single-feed curve: V_drop at position p along strip = current_at_p * R remaining / 2
+  // Simpler representation: triangular drop, peak at the far end, normalized to maxDrop_V
+  function curve(nFeeds) {
+    const segLen = 100 / nFeeds;
+    const pts = [];
+    for (let i = 0; i <= 100; i++) {
+      const intoSeg = (i % segLen) / segLen;
+      // drop within a segment grows like x * (1 - x/2) * vDrop_singleFeed/(nFeeds^2) — approximate as parabola
+      const norm = (intoSeg * (2 - intoSeg)) / 2;
+      const dropFrac = norm * (inj.vDrop_singleFeed_V / (nFeeds * nFeeds)) / inj.maxDrop_V;
+      pts.push(`${xs(i).toFixed(1)},${ys(Math.min(dropFrac, 1)).toFixed(1)}`);
+    }
+    return pts.join(' ');
+  }
+
+  svg.innerHTML = `
+    <line x1="${PAD}" y1="${H - PAD}" x2="${W - PAD}" y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
+    <line x1="${PAD}" y1="${PAD}"     x2="${PAD}"     y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
+    <polyline fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1" points="${curve(1)}"/>
+    <polyline fill="none" stroke="currentColor" stroke-width="1.5" points="${curve(inj.nFeeds)}"/>
+    <text x="${W - PAD}" y="${H - 1}" text-anchor="end" font-size="8" fill="currentColor" opacity="0.6">faded = 1 feed · solid = ${inj.nFeeds}</text>
+  `;
+}
