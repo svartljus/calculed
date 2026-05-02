@@ -54,7 +54,6 @@ function makeDefaultStrip() {
     runs: 1,
     brightness: 255,
     colorMode: 'white',
-    feedRunMeters: 2,
     dataRunMeters: 0.3,
     maxDropPercent: 10,
   };
@@ -82,7 +81,6 @@ function renderStrip(strip) {
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="brightness"]').value = strip.brightness;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
-  node.querySelector('input[name="feedRunMeters"]').value = strip.feedRunMeters;
   node.querySelector('input[name="dataRunMeters"]').value = strip.dataRunMeters;
   node.querySelector('input[name="maxDropPercent"]').value = strip.maxDropPercent;
 
@@ -107,7 +105,6 @@ function readStripFromCard(card) {
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     brightness: Number(card.querySelector('input[name="brightness"]').value),
     colorMode: card.querySelector('select[name="colorMode"]').value,
-    feedRunMeters: Number(card.querySelector('input[name="feedRunMeters"]').value),
     dataRunMeters: Number(card.querySelector('input[name="dataRunMeters"]').value),
     maxDropPercent: Number(card.querySelector('input[name="maxDropPercent"]').value),
   };
@@ -129,10 +126,22 @@ function paintCard(card, strip) {
   $('ledCount').value    = intOrDash(draw.ledCount);
   $('current').value     = fmt(draw.current_A, 2);
   $('power').value       = fmt(draw.power_W, 1);
-  $('injectEvery').value = fmt(inj.injectEvery_m, 2);
-  $('nFeeds').value      = intOrDash(inj.nFeeds);
+  const dropPerSeg = inj.vDrop_singleFeed_V / (inj.nFeeds * inj.nFeeds);
+  const dropStr = Number.isFinite(dropPerSeg) ? `~${dropPerSeg.toFixed(2)} V drop` : '';
+  let summary;
+  if (inj.nFeeds === 1) {
+    summary = `single feed${dropStr ? ` · ${dropStr}` : ''}`;
+  } else if (Number.isFinite(inj.injectEvery_m)) {
+    summary = `every ${inj.injectEvery_m.toFixed(2)} m · ${inj.nFeeds} feeds${dropStr ? ` · ${dropStr}` : ''}`;
+  } else {
+    summary = '—';
+  }
+  $('injectionSummary').value = summary;
   $('awg').value         = `${awg.awg} AWG${awg.overCapacity ? ' (over capacity!)' : ''}`;
   $('fuse').value        = fuse;
+
+  const doubledInput = card.querySelector('input[name="doubled"]');
+  doubledInput.disabled = strip.lengthMode === 'count';
 
   const dataLine = [
     `Level shifter: ${data.levelShifter}`,

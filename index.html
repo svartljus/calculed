@@ -71,7 +71,6 @@
 
         <fieldset>
           <legend>Wiring</legend>
-          <label>Feed run from PSU <input type="number" name="feedRunMeters" step="0.1" min="0" value="2"> m</label>
           <label>Data run <input type="number" name="dataRunMeters" step="0.1" min="0" value="0.3"> m</label>
           <label>Max voltage drop <input type="number" name="maxDropPercent" min="1" max="50" value="10"> %</label>
         </fieldset>
@@ -81,8 +80,7 @@
             <dt>LED count</dt>    <dd><output name="ledCount">0</output></dd>
             <dt>Current</dt>      <dd><output name="current">0</output> A</dd>
             <dt>Power</dt>        <dd><output name="power">0</output> W</dd>
-            <dt>Inject every</dt> <dd><output name="injectEvery">—</output> m
-                                      (<output name="nFeeds">—</output> feeds)</dd>
+            <dt>Inject every</dt> <dd><output name="injectionSummary">—</output></dd>
             <dt>Wire gauge</dt>   <dd><output name="awg">—</output></dd>
             <dt>Fuse</dt>         <dd><output name="fuse">—</output> A</dd>
             <dt>Data</dt>         <dd><output name="dataNote">—</output></dd>
