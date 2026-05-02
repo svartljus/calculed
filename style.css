@@ -137,19 +137,34 @@ label:has(> input:disabled) { color: var(--muted); }
   padding-top: 0.55rem;
   margin-top: 0.25rem;
   border-top: var(--rule);
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.875em;
 }
-[data-results] dl {
+
+/* Inline stats — flex pairs that flow across the row */
+[data-results] .stats {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  align-items: baseline;
+}
+[data-results] .stats > div { display: flex; gap: 0.4rem; align-items: baseline; }
+[data-results] .stats dt { color: var(--muted); margin: 0; }
+[data-results] .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Detail rows — traditional dt/dd grid for the wider items */
+[data-results] .details {
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 1rem;
   row-gap: 0.25rem;
-  font-size: 0.875em;
 }
-[data-results] dt { color: var(--muted); }
-[data-results] dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
-[data-results] dd output { font-variant-numeric: tabular-nums; }
-[data-results] dd strong { font-weight: 700; }
+[data-results] .details dt { color: var(--muted); }
+[data-results] .details dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+[data-results] .details dd strong { font-weight: 700; }
 
 .tier-hint {
   font-size: 0.75em;

@@ -83,12 +83,16 @@
         </details>
 
         <section data-results>
-          <dl>
-            <dt>Pixels</dt>     <dd><output name="pixels">0</output></dd>
-            <dt>LEDs</dt>       <dd><output name="ledCount">0</output></dd>
-            <dt>Current</dt>    <dd><output name="current">0</output> A</dd>
-            <dt>Power</dt>      <dd><output name="power">0</output> W</dd>
-            <dt>Inject</dt>     <dd><output name="injectionSummary">—</output></dd>
+          <dl class="stats">
+            <div><dt>Pixels</dt>  <dd><output name="pixels">0</output></dd></div>
+            <div><dt>LEDs</dt>    <dd><output name="ledCount">0</output></dd></div>
+            <div><dt>Current</dt> <dd><output name="current">0</output> A</dd></div>
+            <div><dt>Power</dt>   <dd><output name="power">0</output> W</dd></div>
+            <div><dt>Data</dt>    <dd><output name="dataShort">—</output> <button type="button" class="info" data-info title="">?</button></dd></div>
+          </dl>
+          <dl class="details">
+            <dt>Inject</dt>
+            <dd><output name="injectionSummary">—</output></dd>
             <dt>Wire <span class="tier-hint" title="Three options: bare-minimum gauge / standard 1.25× safety / extra headroom for sustained max brightness">min · balanced · solid</span></dt>
             <dd>
               <output name="awgMin">—</output> ·
@@ -100,11 +104,6 @@
               <output name="fuseMin">—</output> ·
               <strong><output name="fuseBalanced">—</output></strong> ·
               <output name="fuseSolid">—</output> A
-            </dd>
-            <dt>Data</dt>
-            <dd>
-              <output name="dataShort">—</output>
-              <button type="button" class="info" data-info title="">?</button>
             </dd>
           </dl>
         </section>
