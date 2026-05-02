@@ -17,3 +17,17 @@ export function computeStripDraw(strip, chip) {
   const power_W   = current_A * chip.voltage;
   return { ledCount, current_A, power_W };
 }
+
+export function computeProjectTotals(strips, getChip) {
+  let totalPower_W = 0;
+  let totalLeds = 0;
+  for (const s of strips) {
+    const chip = getChip(s.chipId);
+    if (!chip) continue;
+    const r = computeStripDraw(s, chip);
+    totalPower_W += r.power_W;
+    totalLeds   += r.ledCount;
+  }
+  const psuRec_W = totalPower_W / 0.8;
+  return { totalPower_W, psuRec_W, totalLeds };
+}
