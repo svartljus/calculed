@@ -5,22 +5,31 @@ export function effectiveMaPerLed(baseMa, brightness, colorMode) {
   return baseMa * (brightness / 255) * factor;
 }
 
-export function computeLedCount(strip) {
+// Pixels = addressable units (what WLED sees). Independent of doubled mode.
+export function computePixels(strip) {
   if (strip.lengthMode === 'count') return strip.length;
-  return strip.density * strip.length * strip.runs;
+  return strip.density * strip.length;
+}
+
+// LED count = physical LEDs. Doubled mode (runs=2) doubles the count
+// because two parallel strips share the same data signal.
+export function computeLedCount(strip) {
+  return computePixels(strip) * (strip.runs || 1);
 }
 
 export function computeStripDraw(strip, chip) {
+  const pixels = computePixels(strip);
   const ledCount = computeLedCount(strip);
   const mA = effectiveMaPerLed(chip.mA_per_led, strip.brightness, strip.colorMode);
   const current_A = (ledCount * mA) / 1000;
   const power_W   = current_A * chip.voltage;
-  return { ledCount, current_A, power_W };
+  return { pixels, ledCount, current_A, power_W };
 }
 
 export function computeProjectTotals(strips, getChip) {
   let totalPower_W = 0;
   let totalLeds = 0;
+  let totalPixels = 0;
   for (const s of strips) {
     const chip = getChip(s.chipId);
     // silent skip: stale chipId from old localStorage; UI surfaces unknown chips separately
@@ -28,23 +37,29 @@ export function computeProjectTotals(strips, getChip) {
     const r = computeStripDraw(s, chip);
     totalPower_W += r.power_W;
     totalLeds   += r.ledCount;
+    totalPixels += r.pixels;
   }
   const psuRec_W = totalPower_W / 0.8;
-  return { totalPower_W, psuRec_W, totalLeds };
+  return { totalPower_W, psuRec_W, totalLeds, totalPixels };
 }
 
 export function computeInjection(strip, chip) {
-  const ledCount = computeLedCount(strip);
+  const pixels = computePixels(strip);
+  const runs = strip.runs || 1;
   const mA = effectiveMaPerLed(chip.mA_per_led, strip.brightness, strip.colorMode);
-  const current_A = (ledCount * mA) / 1000;
+  // Per-strip current: doubled = parallel strips, each carrying current for `pixels` LEDs.
+  const perStripCurrent_A = (pixels * mA) / 1000;
+  const current_A = perStripCurrent_A * runs;     // total current to PSU
 
+  // Electrical length is per strip (visible length), not multiplied by runs.
   const electricalLength_m =
     strip.lengthMode === 'count'
       ? strip.length / strip.density
-      : strip.length * strip.runs;
+      : strip.length;
 
   const R_total       = chip.ohm_per_meter * electricalLength_m;
-  const vDrop_singleFeed_V = (current_A * R_total) / 2;
+  // Voltage drop is per parallel strip — uses per-strip current, not total.
+  const vDrop_singleFeed_V = (perStripCurrent_A * R_total) / 2;
   const maxDrop_V     = chip.voltage * (strip.maxDropPercent / 100);
 
   const nFeeds = vDrop_singleFeed_V <= maxDrop_V

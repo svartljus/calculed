@@ -75,7 +75,8 @@ function renderStrip(strip) {
 
   // Set form values from the strip object
   node.querySelector('input[name="name"]').value = strip.name;
-  node.querySelector('select[name="density"]').value = strip.density;
+  const densityRadio = node.querySelector(`input[name="density"][value="${strip.density}"]`);
+  if (densityRadio) densityRadio.checked = true;
   node.querySelector('input[name="length"]').value = strip.length;
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
@@ -99,7 +100,7 @@ function readStripFromCard(card) {
     id: card.dataset.id,
     name: card.querySelector('input[name="name"]').value,
     chipId: card.querySelector('select[name="chipId"]').value,
-    density: Number(card.querySelector('select[name="density"]').value),
+    density: Number(card.querySelector('input[name="density"]:checked')?.value ?? 60),
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
@@ -123,6 +124,7 @@ function paintCard(card, strip) {
   const data = dataRecommendation(strip, chip);
 
   const $ = name => card.querySelector(`output[name="${name}"]`);
+  $('pixels').value      = intOrDash(draw.pixels);
   $('ledCount').value    = intOrDash(draw.ledCount);
   $('current').value     = fmt(draw.current_A, 2);
   $('power').value       = fmt(draw.power_W, 1);
@@ -139,9 +141,6 @@ function paintCard(card, strip) {
   $('injectionSummary').value = summary;
   $('awg').value         = `${awg.awg} AWG${awg.overCapacity ? ' (over capacity!)' : ''}`;
   $('fuse').value        = fuse;
-
-  const doubledInput = card.querySelector('input[name="doubled"]');
-  doubledInput.disabled = strip.lengthMode === 'count';
 
   const dataLine = [
     `Level shifter: ${data.levelShifter}`,
@@ -160,9 +159,10 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
-  document.querySelector('output[name="totalPower"]').value = fmt(totals.totalPower_W, 1);
-  document.querySelector('output[name="psuRec"]').value    = fmt(totals.psuRec_W, 0);
-  document.querySelector('output[name="totalLeds"]').value = intOrDash(totals.totalLeds);
+  document.querySelector('output[name="totalPower"]').value  = fmt(totals.totalPower_W, 1);
+  document.querySelector('output[name="psuRec"]').value      = fmt(totals.psuRec_W, 0);
+  document.querySelector('output[name="totalPixels"]').value = intOrDash(totals.totalPixels);
+  document.querySelector('output[name="totalLeds"]').value   = intOrDash(totals.totalLeds);
 }
 
 function syncFromDom() {

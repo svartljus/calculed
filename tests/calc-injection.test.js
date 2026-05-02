@@ -26,26 +26,26 @@ test('long high-current strip needs multiple feeds', () => {
   assert.ok(Math.abs(r.injectEvery_m - (5 / 8)) < 0.001);
 });
 
-test('runs=2 doubles the electrical length', () => {
+test('doubled = parallel strips: same per-strip current, same length, same nFeeds', () => {
   // WS2815 (12V, 17 mA/LED, 0.45 Ω/m), 5m × 60/m, full white, maxDropPercent=10
-  // single (runs=1): 300 LEDs × 17 mA = 5.1 A; R = 0.45 × 5 = 2.25 Ω
+  // single (runs=1): per-strip current = 300 × 17 / 1000 = 5.1 A; R = 0.45 × 5 = 2.25 Ω
   //   vDrop_1feed = 5.1 × 2.25 / 2 = 5.7375 V; maxDrop = 1.2 V
   //   nFeeds = ceil(sqrt(5.7375 / 1.2)) = ceil(2.187) = 3
-  // doubled (runs=2): 600 LEDs × 17 mA = 10.2 A; R = 0.45 × 10 = 4.5 Ω
-  //   vDrop_1feed = 10.2 × 4.5 / 2 = 22.95 V; maxDrop = 1.2 V
-  //   nFeeds = ceil(sqrt(22.95 / 1.2)) = ceil(4.373) = 5
-  // doubled has 2x current AND 2x length → V_drop_1feed grows 4x → nFeeds grows
+  // doubled (runs=2): per-strip current = 5.1 A (same! one of two parallel strips)
+  //   length = 5 m (per strip, NOT doubled); R = 0.45 × 5 = 2.25 Ω
+  //   vDrop_1feed = same = 5.7375 V → nFeeds = 3 (unchanged)
+  // total current to PSU = 5.1 × 2 = 10.2 A
   const chip = getChip('ws2815');
   const single = computeInjection({ lengthMode: 'meters', length: 5, density: 60, runs: 1, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
   const doubled = computeInjection({ lengthMode: 'meters', length: 5, density: 60, runs: 2, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
   assert.equal(single.nFeeds, 3);
-  assert.equal(doubled.nFeeds, 5);
-  assert.ok(doubled.nFeeds >= single.nFeeds);
-  assert.ok(doubled.electricalLength_m === 10);
+  assert.equal(doubled.nFeeds, 3);
+  assert.equal(doubled.electricalLength_m, 5);
+  assert.ok(Math.abs(doubled.current_A - single.current_A * 2) < 0.01);
 });
 
-test('count mode uses ledCount/density for electrical length and ignores runs', () => {
+test('count mode: electrical length = pixels / density, independent of runs', () => {
   const chip = getChip('ws2812b');
   const r = computeInjection({ lengthMode: 'count', length: 144, density: 60, runs: 2, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
-  assert.equal(r.electricalLength_m, 2.4);  // 144 / 60, runs ignored per design
+  assert.equal(r.electricalLength_m, 2.4);  // 144 pixels / 60 = 2.4 m per strip
 });

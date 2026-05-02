@@ -6,12 +6,20 @@ import { getChip } from '../src/chips.js';
 const stripA = { chipId: 'ws2815', lengthMode: 'meters', length: 5, density: 60, runs: 1, brightness: 255, colorMode: 'white' };
 const stripB = { chipId: 'ws2812b', lengthMode: 'meters', length: 2, density: 60, runs: 1, brightness: 255, colorMode: 'white' };
 
-test('project totals sum power across strips', () => {
+test('project totals sum power, LEDs, and pixels across strips', () => {
   // A: 300 LEDs × 17 mA × 12V = 61.2 W
   // B: 120 LEDs × 36 mA × 5V  = 21.6 W
   const r = computeProjectTotals([stripA, stripB], getChip);
   assert.ok(Math.abs(r.totalPower_W - 82.8) < 0.05);
   assert.equal(r.totalLeds, 420);
+  assert.equal(r.totalPixels, 420);
+});
+
+test('totals: doubled strip pixels stay constant; LEDs reflect physical doubling', () => {
+  const doubled = { ...stripA, runs: 2 };  // 300 pixels, 600 LEDs
+  const r = computeProjectTotals([doubled], getChip);
+  assert.equal(r.totalPixels, 300);
+  assert.equal(r.totalLeds, 600);
 });
 
 test('PSU recommendation adds 20% headroom', () => {
