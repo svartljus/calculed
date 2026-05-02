@@ -69,3 +69,10 @@ export function recommendAWG(currentA) {
   if (fit) return { awg: fit.awg, overCapacity: false };
   return { awg: AWG_TABLE.at(-1).awg, overCapacity: true };
 }
+
+const FUSE_SIZES_A = [1, 2, 3, 5, 7.5, 10, 15, 20, 25, 30];
+
+export function recommendFuse(currentA) {
+  const target = currentA * 1.25;
+  return FUSE_SIZES_A.find(s => s >= target) ?? FUSE_SIZES_A.at(-1);
+}
