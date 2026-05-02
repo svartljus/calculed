@@ -23,6 +23,7 @@ export function computeProjectTotals(strips, getChip) {
   let totalLeds = 0;
   for (const s of strips) {
     const chip = getChip(s.chipId);
+    // silent skip: stale chipId from old localStorage; UI surfaces unknown chips separately
     if (!chip) continue;
     const r = computeStripDraw(s, chip);
     totalPower_W += r.power_W;

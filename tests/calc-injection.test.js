@@ -34,3 +34,9 @@ test('runs=2 doubles the electrical length', () => {
   assert.ok(doubled.nFeeds >= single.nFeeds);
   assert.ok(doubled.electricalLength_m === 10);
 });
+
+test('count mode uses ledCount/density for electrical length and ignores runs', () => {
+  const chip = getChip('ws2812b');
+  const r = computeInjection({ lengthMode: 'count', length: 144, density: 60, runs: 2, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
+  assert.equal(r.electricalLength_m, 2.4);  // 144 / 60, runs ignored per design
+});
