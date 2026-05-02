@@ -33,7 +33,7 @@ label input[type="checkbox"], label input[type="range"] { padding: 0; }
 [data-results] { display: grid; grid-template-columns: 1fr 12rem; gap: var(--gap); align-items: start; padding-top: var(--pad); border-top: var(--rule); }
 [data-results] dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; column-gap: 1rem; row-gap: 0.2rem; }
 [data-results] dt { opacity: 0.6; }
-[data-results] dd { margin: 0; font-variant-numeric: tabular-nums; }
+[data-results] dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
 [data-drop-viz] { color: currentColor; max-width: 100%; }
 
 #totals {

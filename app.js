@@ -9,13 +9,22 @@ function saveToStorage() {
   } catch { /* quota etc. — ignore */ }
 }
 
+function sanitizeStrip(s) {
+  if (!s || typeof s !== 'object') return null;
+  const def = makeDefaultStrip();
+  const chipId = getChip(s.chipId) ? s.chipId : DEFAULT_CHIP_ID;
+  return { ...def, ...s, chipId, id: s.id ?? crypto.randomUUID() };
+}
+
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed.version !== 1) return null;
-    return parsed;
+    if (parsed?.version !== 1 || !Array.isArray(parsed.strips)) return null;
+    const strips = parsed.strips.map(sanitizeStrip).filter(Boolean);
+    if (strips.length === 0) return null;
+    return { version: 1, strips };
   } catch {
     return null;
   }
@@ -26,6 +35,10 @@ function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToStorage, 300);
 }
+
+addEventListener('pagehide', () => {
+  if (saveTimer) { clearTimeout(saveTimer); saveToStorage(); }
+});
 
 const stripsList = document.getElementById('strips');
 const tpl = document.getElementById('strip-template');
@@ -183,6 +196,7 @@ const resetDialog = document.getElementById('reset-confirm');
 document.getElementById('reset').addEventListener('click', () => resetDialog.showModal());
 resetDialog.addEventListener('close', () => {
   if (resetDialog.returnValue !== 'confirm') return;
+  clearTimeout(saveTimer);
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
 });
