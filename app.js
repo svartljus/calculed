@@ -176,6 +176,14 @@ stripsList.addEventListener('click', (e) => {
   }
 });
 
+const resetDialog = document.getElementById('reset-confirm');
+document.getElementById('reset').addEventListener('click', () => resetDialog.showModal());
+resetDialog.addEventListener('close', () => {
+  if (resetDialog.returnValue !== 'confirm') return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+});
+
 function drawDropViz(svg, strip, chip, inj) {
   const W = 200, H = 80, PAD = 10;
   const xs = i => PAD + (W - 2 * PAD) * (i / 100);
