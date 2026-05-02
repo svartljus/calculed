@@ -5,8 +5,8 @@ import { getChip } from '../src/chips.js';
 
 test('short low-current strip needs only 1 feed', () => {
   // WS2815, 1m, 60 LEDs, full white: 60 × 17 mA = 1.02 A
-  // R = 1.0 × 1 = 1 Ω; V_drop = 1.02 × 1 / 2 = 0.51 V
-  // maxDrop = 12 × 10% = 1.2 V → 0.51 < 1.2 → 1 feed
+  // R = 0.45 × 1 = 0.45 Ω; V_drop = 1.02 × 0.45 / 2 = 0.2295 V
+  // maxDrop = 12 × 10% = 1.2 V → 0.2295 < 1.2 → 1 feed
   const chip = getChip('ws2815');
   const strip = { lengthMode: 'meters', length: 1, density: 60, runs: 1, brightness: 255, colorMode: 'white', maxDropPercent: 10 };
   const r = computeInjection(strip, chip);
@@ -27,10 +27,19 @@ test('long high-current strip needs multiple feeds', () => {
 });
 
 test('runs=2 doubles the electrical length', () => {
+  // WS2815 (12V, 17 mA/LED, 0.45 Ω/m), 5m × 60/m, full white, maxDropPercent=10
+  // single (runs=1): 300 LEDs × 17 mA = 5.1 A; R = 0.45 × 5 = 2.25 Ω
+  //   vDrop_1feed = 5.1 × 2.25 / 2 = 5.7375 V; maxDrop = 1.2 V
+  //   nFeeds = ceil(sqrt(5.7375 / 1.2)) = ceil(2.187) = 3
+  // doubled (runs=2): 600 LEDs × 17 mA = 10.2 A; R = 0.45 × 10 = 4.5 Ω
+  //   vDrop_1feed = 10.2 × 4.5 / 2 = 22.95 V; maxDrop = 1.2 V
+  //   nFeeds = ceil(sqrt(22.95 / 1.2)) = ceil(4.373) = 5
+  // doubled has 2x current AND 2x length → V_drop_1feed grows 4x → nFeeds grows
   const chip = getChip('ws2815');
   const single = computeInjection({ lengthMode: 'meters', length: 5, density: 60, runs: 1, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
   const doubled = computeInjection({ lengthMode: 'meters', length: 5, density: 60, runs: 2, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
-  // doubled has 2x current AND 2x length → V_drop_1feed grows 4x → nFeeds grows 2x at minimum
+  assert.equal(single.nFeeds, 3);
+  assert.equal(doubled.nFeeds, 5);
   assert.ok(doubled.nFeeds >= single.nFeeds);
   assert.ok(doubled.electricalLength_m === 10);
 });

@@ -23,3 +23,9 @@ test('every chip has the required fields', () => {
 test('getChip returns undefined for unknown id', () => {
   assert.equal(getChip('nope'), undefined);
 });
+
+test('ohm_per_meter values look plausible (0.1–2.0 Ω/m)', () => {
+  for (const c of CHIPS) {
+    assert.ok(c.ohm_per_meter >= 0.1 && c.ohm_per_meter <= 2.0, `${c.id} has implausible ohm_per_meter`);
+  }
+});
