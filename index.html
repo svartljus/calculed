@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CalcuLED</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <form id="project">
+      <ol id="strips"></ol>
+      <button type="button" id="add-strip">+ Add strip</button>
+      <button type="button" id="reset">Reset</button>
+    </form>
+
+    <footer id="totals">
+      <dl>
+        <dt>Total power</dt>     <dd><output name="totalPower">0</output> W</dd>
+        <dt>Recommended PSU</dt> <dd><output name="psuRec">0</output> W</dd>
+        <dt>Total LEDs</dt>      <dd><output name="totalLeds">0</output></dd>
+      </dl>
+      <button type="button" id="print">Print BOM</button>
+    </footer>
+
+    <details id="footnote">
+      <summary>About the calculations</summary>
+      <p>mA-per-LED values from typical-white measurements published by quinled.info, not spec-sheet maxima. Voltage-drop math uses a continuous approximation (current tapers along the strip).</p>
+    </details>
+  </main>
+
+  <template id="strip-template">
+    <li>
+      <article>
+        <header>
+          <input name="name" placeholder="Strip">
+          <button type="button" data-action="remove">Remove</button>
+        </header>
+
+        <fieldset>
+          <legend>Strip</legend>
+          <label>Chip <select name="chipId"></select></label>
+          <label>Density
+            <select name="density">
+              <option value="30">30/m</option>
+              <option value="60" selected>60/m</option>
+              <option value="96">96/m</option>
+              <option value="144">144/m</option>
+            </select>
+          </label>
+          <label>Length
+            <input type="number" name="length" step="0.1" min="0" value="5">
+            <select name="lengthMode">
+              <option value="meters" selected>meters</option>
+              <option value="count">LEDs</option>
+            </select>
+          </label>
+          <label><input type="checkbox" name="doubled"> Doubled (e.g. neon tube)</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Brightness &amp; color</legend>
+          <label>Max brightness <input type="range" name="brightness" min="0" max="255" value="255"></label>
+          <label>Color assumption
+            <select name="colorMode">
+              <option value="white" selected>white (worst case)</option>
+              <option value="average">average (~⅓ duty)</option>
+            </select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Wiring</legend>
+          <label>Feed run from PSU <input type="number" name="feedRunMeters" step="0.1" min="0" value="2"> m</label>
+          <label>Data run <input type="number" name="dataRunMeters" step="0.1" min="0" value="0.3"> m</label>
+          <label>Max voltage drop <input type="number" name="maxDropPercent" min="1" max="50" value="10"> %</label>
+        </fieldset>
+
+        <section data-results>
+          <dl>
+            <dt>LED count</dt>    <dd><output name="ledCount">0</output></dd>
+            <dt>Current</dt>      <dd><output name="current">0</output> A</dd>
+            <dt>Power</dt>        <dd><output name="power">0</output> W</dd>
+            <dt>Inject every</dt> <dd><output name="injectEvery">—</output> m
+                                      (<output name="nFeeds">—</output> feeds)</dd>
+            <dt>Wire gauge</dt>   <dd><output name="awg">—</output></dd>
+            <dt>Fuse</dt>         <dd><output name="fuse">—</output> A</dd>
+            <dt>Data</dt>         <dd><output name="dataNote">—</output></dd>
+          </dl>
+          <svg data-drop-viz width="100%" height="80" viewBox="0 0 200 80"></svg>
+        </section>
+      </article>
+    </li>
+  </template>
+
+  <dialog id="reset-confirm">
+    <form method="dialog">
+      <p>Erase all strips and saved data?</p>
+      <button value="cancel">Cancel</button>
+      <button value="confirm">Erase</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
