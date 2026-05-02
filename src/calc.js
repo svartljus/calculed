@@ -53,3 +53,19 @@ export function computeInjection(strip, chip) {
   const injectEvery_m = electricalLength_m / nFeeds;
   return { nFeeds, injectEvery_m, vDrop_singleFeed_V, maxDrop_V, electricalLength_m, current_A };
 }
+
+const AWG_TABLE = [
+  { awg: 18, ampacity: 7 },
+  { awg: 16, ampacity: 10 },
+  { awg: 14, ampacity: 15 },
+  { awg: 12, ampacity: 20 },
+  { awg: 10, ampacity: 30 },
+  { awg: 8,  ampacity: 40 },
+];
+
+export function recommendAWG(currentA) {
+  const required = currentA * 1.25;
+  const fit = AWG_TABLE.find(row => row.ampacity >= required);
+  if (fit) return { awg: fit.awg, overCapacity: false };
+  return { awg: AWG_TABLE.at(-1).awg, overCapacity: true };
+}
