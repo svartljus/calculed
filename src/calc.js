@@ -31,3 +31,25 @@ export function computeProjectTotals(strips, getChip) {
   const psuRec_W = totalPower_W / 0.8;
   return { totalPower_W, psuRec_W, totalLeds };
 }
+
+export function computeInjection(strip, chip) {
+  const ledCount = computeLedCount(strip);
+  const mA = effectiveMaPerLed(chip.mA_per_led, strip.brightness, strip.colorMode);
+  const current_A = (ledCount * mA) / 1000;
+
+  const electricalLength_m =
+    strip.lengthMode === 'count'
+      ? strip.length / strip.density
+      : strip.length * strip.runs;
+
+  const R_total       = chip.ohm_per_meter * electricalLength_m;
+  const vDrop_singleFeed_V = (current_A * R_total) / 2;
+  const maxDrop_V     = chip.voltage * (strip.maxDropPercent / 100);
+
+  const nFeeds = vDrop_singleFeed_V <= maxDrop_V
+    ? 1
+    : Math.ceil(Math.sqrt(vDrop_singleFeed_V / maxDrop_V));
+
+  const injectEvery_m = electricalLength_m / nFeeds;
+  return { nFeeds, injectEvery_m, vDrop_singleFeed_V, maxDrop_V, electricalLength_m, current_A };
+}
