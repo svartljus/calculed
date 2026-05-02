@@ -1,0 +1,10 @@
+{
+  "name": "calculed",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WLED install planner: power, injection points, wire, fuses.",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\""
+  }
+}
