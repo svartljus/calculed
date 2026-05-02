@@ -111,7 +111,10 @@ function readStripFromCard(card) {
   };
 }
 
-function fmt(n, digits = 1) { return Number.isFinite(n) ? n.toFixed(digits) : '—'; }
+function fmt(n, digits = 2) {
+  if (!Number.isFinite(n)) return '—';
+  return parseFloat(n.toFixed(digits)).toString();   // strip trailing zeros
+}
 const intOrDash = n => Number.isFinite(n) ? String(n) : '—';
 
 function paintCard(card, strip) {
@@ -119,39 +122,49 @@ function paintCard(card, strip) {
   if (!chip) return;
   const draw = computeStripDraw(strip, chip);
   const inj  = computeInjection(strip, chip);
-  const awg  = recommendAWG(inj.current_A / inj.nFeeds);
-  const fuse = recommendFuse(inj.current_A / inj.nFeeds);
+  const perFeedCurrent = inj.current_A / inj.nFeeds;
+  const awg  = recommendAWG(perFeedCurrent);
+  const fuse = recommendFuse(perFeedCurrent);
   const data = dataRecommendation(strip, chip);
 
   const $ = name => card.querySelector(`output[name="${name}"]`);
-  $('pixels').value      = intOrDash(draw.pixels);
-  $('ledCount').value    = intOrDash(draw.ledCount);
-  $('current').value     = fmt(draw.current_A, 2);
-  $('power').value       = fmt(draw.power_W, 1);
+  $('pixels').value   = intOrDash(draw.pixels);
+  $('ledCount').value = intOrDash(draw.ledCount);
+  $('current').value  = fmt(draw.current_A);
+  $('power').value    = fmt(draw.power_W);
+
+  // Inject summary
   const dropPerSeg = inj.vDrop_singleFeed_V / (inj.nFeeds * inj.nFeeds);
-  const dropStr = Number.isFinite(dropPerSeg) ? `~${dropPerSeg.toFixed(2)} V drop` : '';
+  const dropStr = Number.isFinite(dropPerSeg) ? `~${fmt(dropPerSeg)} V drop` : '';
   let summary;
   if (inj.nFeeds === 1) {
     summary = `single feed${dropStr ? ` · ${dropStr}` : ''}`;
   } else if (Number.isFinite(inj.injectEvery_m)) {
-    summary = `every ${inj.injectEvery_m.toFixed(2)} m · ${inj.nFeeds} feeds${dropStr ? ` · ${dropStr}` : ''}`;
+    summary = `every ${fmt(inj.injectEvery_m)} m · ${inj.nFeeds} feeds${dropStr ? ` · ${dropStr}` : ''}`;
   } else {
     summary = '—';
   }
   $('injectionSummary').value = summary;
-  $('awg').value         = `${awg.awg} AWG${awg.overCapacity ? ' (over capacity!)' : ''}`;
-  $('fuse').value        = fuse;
 
-  const dataLine = [
-    `Level shifter: ${data.levelShifter}`,
-    data.note ? `(${data.note})` : '',
+  // Three tiers for AWG and fuse
+  const awgStr = t => `${t.awg}${t.overCapacity ? '!' : ''}`;
+  $('awgMin').value      = awgStr(awg.min);
+  $('awgBalanced').value = awgStr(awg.balanced);
+  $('awgSolid').value    = awgStr(awg.solid);
+  $('fuseMin').value      = fmt(fuse.min);
+  $('fuseBalanced').value = fmt(fuse.balanced);
+  $('fuseSolid').value    = fmt(fuse.solid);
+
+  // Data — short label + tooltip
+  const shortLabel = chip.protocol + (data.dataRunWarning ? ' ⚠' : '');
+  const tooltip = [
+    `Protocol: ${chip.protocol}`,
+    `Level shifter: ${data.levelShifter}` + (data.note ? ` (${data.note})` : ''),
     `Series resistor: ${data.resistor}`,
-    data.dataRunWarning ? '⚠ data run > 3 m — keep it short or buffer the signal' : '',
-  ].filter(Boolean).join(' · ');
-  $('dataNote').value = dataLine;
-
-  const svg = card.querySelector('[data-drop-viz]');
-  drawDropViz(svg, strip, chip, inj);
+    data.dataRunWarning ? `⚠ data wire > 3 m — keep it short or buffer the signal` : '',
+  ].filter(Boolean).join('\n');
+  $('dataShort').value = shortLabel;
+  card.querySelector('[data-info]').title = tooltip;
 
   const brightLabel = card.querySelector('label:has(> input[name="brightness"])');
   if (brightLabel) brightLabel.dataset.printValue = `value: ${strip.brightness}/255`;
@@ -159,8 +172,10 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
-  document.querySelector('output[name="totalPower"]').value  = fmt(totals.totalPower_W, 1);
-  document.querySelector('output[name="psuRec"]').value      = fmt(totals.psuRec_W, 0);
+  document.querySelector('output[name="totalPower"]').value  = fmt(totals.totalPower_W);
+  document.querySelector('output[name="psuRec"]').value      = fmt(totals.psu.balanced, 0);
+  document.querySelector('output[name="psuMin"]').value      = fmt(totals.psu.min, 0);
+  document.querySelector('output[name="psuSolid"]').value    = fmt(totals.psu.solid, 0);
   document.querySelector('output[name="totalPixels"]').value = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value   = intOrDash(totals.totalLeds);
 }
@@ -211,34 +226,3 @@ resetDialog.addEventListener('close', () => {
 });
 
 document.getElementById('print').addEventListener('click', () => window.print());
-
-function drawDropViz(svg, strip, chip, inj) {
-  const W = 200, H = 80, PAD = 10;
-  const xs = i => PAD + (W - 2 * PAD) * (i / 100);
-  const ys = v => H - PAD - (H - 2 * PAD) * v;     // v: 0..1 = full drop
-
-  // Single-feed curve: V_drop at position p along strip = current_at_p * R remaining / 2
-  // Simpler representation: triangular drop, peak at the far end, normalized to maxDrop_V
-  function curve(nFeeds) {
-    const segLen = 100 / nFeeds;
-    const pts = [];
-    for (let i = 0; i <= 100; i++) {
-      const segIdx = Math.min(Math.floor(i / segLen), nFeeds - 1);
-      const intoSeg = (i - segIdx * segLen) / segLen;   // 0..1, hits 1 at segment end
-      // drop within a segment grows like x * (1 - x/2) * vDrop_singleFeed/(nFeeds^2) — approximate as parabola
-      const norm = (intoSeg * (2 - intoSeg)) / 2;
-      const dropFrac = norm * (inj.vDrop_singleFeed_V / (nFeeds * nFeeds)) / inj.maxDrop_V;
-      pts.push(`${xs(i).toFixed(1)},${ys(Math.min(dropFrac, 1)).toFixed(1)}`);
-    }
-    return pts.join(' ');
-  }
-
-  svg.innerHTML = `
-    <title>Voltage drop along strip: faded line is single feed, solid line is ${inj.nFeeds}-feed</title>
-    <line x1="${PAD}" y1="${H - PAD}" x2="${W - PAD}" y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
-    <line x1="${PAD}" y1="${PAD}"     x2="${PAD}"     y2="${H - PAD}" stroke="currentColor" stroke-width="0.5"/>
-    <polyline fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1" points="${curve(1)}"/>
-    <polyline fill="none" stroke="currentColor" stroke-width="1.5" points="${curve(inj.nFeeds)}"/>
-    <text x="${W - PAD}" y="${H - 1}" text-anchor="end" font-size="8" fill="currentColor" opacity="0.6">faded = 1 feed · solid = ${inj.nFeeds}</text>
-  `;
-}

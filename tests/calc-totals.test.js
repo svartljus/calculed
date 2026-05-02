@@ -22,15 +22,18 @@ test('totals: doubled strip pixels stay constant; LEDs reflect physical doubling
   assert.equal(r.totalLeds, 600);
 });
 
-test('PSU recommendation adds 20% headroom', () => {
+test('PSU returns three tiers; balanced is alias for psuRec_W', () => {
   const r = computeProjectTotals([stripA], getChip);
-  // 61.2 / 0.8 = 76.5
-  assert.ok(Math.abs(r.psuRec_W - 76.5) < 0.05);
+  // 61.2 W: min=61.2, balanced=76.5, solid=91.8
+  assert.ok(Math.abs(r.psu.min - 61.2) < 0.05);
+  assert.ok(Math.abs(r.psu.balanced - 76.5) < 0.05);
+  assert.ok(Math.abs(r.psu.solid - 91.8) < 0.05);
+  assert.equal(r.psuRec_W, r.psu.balanced);
 });
 
 test('empty project totals are zero', () => {
   const r = computeProjectTotals([], getChip);
   assert.equal(r.totalPower_W, 0);
-  assert.equal(r.psuRec_W, 0);
+  assert.equal(r.psu.balanced, 0);
   assert.equal(r.totalLeds, 0);
 });

@@ -18,6 +18,10 @@
       <div class="hero">
         <span class="hero-label">Recommended PSU</span>
         <strong class="hero-value"><output name="psuRec">0</output> W</strong>
+        <span class="hero-sub">
+          <output name="psuMin">0</output> W min ·
+          <output name="psuSolid">0</output> W solid
+        </span>
       </div>
       <dl>
         <dt>Power</dt>  <dd><output name="totalPower">0</output> W</dd>
@@ -80,16 +84,29 @@
 
         <section data-results>
           <dl>
-            <dt>Pixels</dt>       <dd><output name="pixels">0</output></dd>
-            <dt>LEDs</dt>         <dd><output name="ledCount">0</output></dd>
-            <dt>Current</dt>      <dd><output name="current">0</output> A</dd>
-            <dt>Power</dt>        <dd><output name="power">0</output> W</dd>
-            <dt>Inject</dt>       <dd><output name="injectionSummary">—</output></dd>
-            <dt>Wire gauge</dt>   <dd><output name="awg">—</output></dd>
-            <dt>Fuse</dt>         <dd><output name="fuse">—</output> A</dd>
-            <dt>Data</dt>         <dd><output name="dataNote">—</output></dd>
+            <dt>Pixels</dt>     <dd><output name="pixels">0</output></dd>
+            <dt>LEDs</dt>       <dd><output name="ledCount">0</output></dd>
+            <dt>Current</dt>    <dd><output name="current">0</output> A</dd>
+            <dt>Power</dt>      <dd><output name="power">0</output> W</dd>
+            <dt>Inject</dt>     <dd><output name="injectionSummary">—</output></dd>
+            <dt>Wire <span class="tier-hint" title="Three options: bare-minimum gauge / standard 1.25× safety / extra headroom for sustained max brightness">min · balanced · solid</span></dt>
+            <dd>
+              <output name="awgMin">—</output> ·
+              <strong><output name="awgBalanced">—</output></strong> ·
+              <output name="awgSolid">—</output> AWG
+            </dd>
+            <dt>Fuse</dt>
+            <dd>
+              <output name="fuseMin">—</output> ·
+              <strong><output name="fuseBalanced">—</output></strong> ·
+              <output name="fuseSolid">—</output> A
+            </dd>
+            <dt>Data</dt>
+            <dd>
+              <output name="dataShort">—</output>
+              <button type="button" class="info" data-info title="">?</button>
+            </dd>
           </dl>
-          <svg data-drop-viz role="img" width="100%" height="80" viewBox="0 0 200 80"></svg>
         </section>
       </article>
     </li>

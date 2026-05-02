@@ -83,7 +83,7 @@ legend {
   user-select: none;
 }
 .pills label:last-child { border-right: 0; }
-.pills label:has(input:checked) { background: currentColor; color: Canvas; }
+.pills label:has(input:checked) { background: CanvasText; color: Canvas; }
 .pills label:hover:not(:has(input:checked)) { background: var(--soft); }
 .pills input { position: absolute; opacity: 0; pointer-events: none; }
 
@@ -134,28 +134,49 @@ label:has(> input[type="checkbox"]) { gap: 0.4rem; }
 label:has(> input:disabled) { color: var(--muted); }
 
 [data-results] {
-  display: grid;
-  grid-template-columns: 1fr minmax(10rem, 14rem);
-  gap: 1rem;
-  align-items: start;
   padding-top: 0.55rem;
   margin-top: 0.25rem;
   border-top: var(--rule);
-}
-@media (max-width: 30rem) {
-  [data-results] { grid-template-columns: 1fr; }
 }
 [data-results] dl {
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 1rem;
-  row-gap: 0.2rem;
+  row-gap: 0.25rem;
   font-size: 0.875em;
 }
 [data-results] dt { color: var(--muted); }
 [data-results] dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
-[data-drop-viz] { color: currentColor; max-width: 100%; opacity: 0.85; }
+[data-results] dd output { font-variant-numeric: tabular-nums; }
+[data-results] dd strong { font-weight: 700; }
+
+.tier-hint {
+  font-size: 0.75em;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--muted);
+  cursor: help;
+  margin-left: 0.4rem;
+}
+
+button.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  margin-left: 0.3rem;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: help;
+  color: var(--muted);
+  vertical-align: middle;
+}
+button.info:hover { color: inherit; background: var(--soft); }
 
 form#project > button {
   margin-top: 0.25rem;
@@ -179,6 +200,7 @@ form#project > button {
 #totals .hero { display: flex; flex-direction: column; gap: 0.1rem; }
 #totals .hero-label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
 #totals .hero-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+#totals .hero-sub { color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 #totals dl { margin: 0; display: flex; gap: 0; align-items: baseline; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
 #totals dt { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 0.4rem; }
 #totals dd { margin: 0; margin-right: 1.5rem; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 1rem; }

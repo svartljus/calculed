@@ -39,8 +39,13 @@ export function computeProjectTotals(strips, getChip) {
     totalLeds   += r.ledCount;
     totalPixels += r.pixels;
   }
-  const psuRec_W = totalPower_W / 0.8;
-  return { totalPower_W, psuRec_W, totalLeds, totalPixels };
+  // Three PSU tiers — same headroom factors as wire/fuse for consistency.
+  const psu = {
+    min:      totalPower_W * 1.0,
+    balanced: totalPower_W * 1.25,
+    solid:    totalPower_W * 1.5,
+  };
+  return { totalPower_W, psu, totalLeds, totalPixels, psuRec_W: psu.balanced };
 }
 
 export function computeInjection(strip, chip) {
@@ -79,18 +84,36 @@ const AWG_TABLE = [
   { awg: 8,  ampacity: 40 },
 ];
 
-export function recommendAWG(currentA) {
-  const required = currentA * 1.25;
-  const fit = AWG_TABLE.find(row => row.ampacity >= required);
+function pickAWG(targetA) {
+  const fit = AWG_TABLE.find(row => row.ampacity >= targetA);
   if (fit) return { awg: fit.awg, overCapacity: false };
   return { awg: AWG_TABLE.at(-1).awg, overCapacity: true };
 }
 
+// Three tiers per user choice:
+//   min:      bare minimum (1.0× current — no safety factor)
+//   balanced: 1.25× current — standard install practice
+//   solid:    1.5× current — extra headroom for sustained max brightness / long runs
+export function recommendAWG(currentA) {
+  return {
+    min:      pickAWG(currentA * 1.0),
+    balanced: pickAWG(currentA * 1.25),
+    solid:    pickAWG(currentA * 1.5),
+  };
+}
+
 const FUSE_SIZES_A = [1, 2, 3, 5, 7.5, 10, 15, 20, 25, 30];
 
+function pickFuse(targetA) {
+  return FUSE_SIZES_A.find(s => s >= targetA) ?? FUSE_SIZES_A.at(-1);
+}
+
 export function recommendFuse(currentA) {
-  const target = currentA * 1.25;
-  return FUSE_SIZES_A.find(s => s >= target) ?? FUSE_SIZES_A.at(-1);
+  return {
+    min:      pickFuse(currentA * 1.0),
+    balanced: pickFuse(currentA * 1.25),
+    solid:    pickFuse(currentA * 1.5),
+  };
 }
 
 export function dataRecommendation(strip, chip) {
