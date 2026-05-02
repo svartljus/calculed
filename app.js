@@ -1,6 +1,32 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals } from './src/calc.js';
 
+const STORAGE_KEY = 'calculed:project';
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+  } catch { /* quota etc. — ignore */ }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.version !== 1) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToStorage, 300);
+}
+
 const stripsList = document.getElementById('strips');
 const tpl = document.getElementById('strip-template');
 
@@ -50,7 +76,8 @@ function renderStrip(strip) {
   return node;
 }
 
-const project = { version: 1, strips: [makeDefaultStrip()] };
+const stored = loadFromStorage();
+const project = stored ?? { version: 1, strips: [makeDefaultStrip()] };
 
 function render() {
   stripsList.replaceChildren(...project.strips.map(renderStrip));
@@ -123,7 +150,10 @@ function syncFromDom() {
   paintTotals();
 }
 
-document.getElementById('project').addEventListener('input', syncFromDom);
+document.getElementById('project').addEventListener('input', () => {
+  syncFromDom();
+  scheduleSave();
+});
 render();
 syncFromDom();
 
@@ -132,6 +162,7 @@ document.getElementById('add-strip').addEventListener('click', () => {
   project.strips.push(strip);
   stripsList.appendChild(renderStrip(strip));
   syncFromDom();
+  scheduleSave();
 });
 
 stripsList.addEventListener('click', (e) => {
@@ -141,6 +172,7 @@ stripsList.addEventListener('click', (e) => {
     project.strips = project.strips.filter(s => s.id !== id);
     li.remove();
     paintTotals();
+    scheduleSave();
   }
 });
 
