@@ -1,11 +1,12 @@
 import { computePixels } from './calc.js';
 
 // QuinLED-Dig-Octa powerboards. Source: quinled.info/quinled-boards/
+// priceUSD approximate retail (Quinled shop).
 const POWERBOARDS = [
-  { id: 'power5',   name: 'Power-5',   amps: 50,  ports: 12, voltages: [5, 12, 24] },
-  { id: 'power7',   name: 'Power-7',   amps: 50,  ports: 16, voltages: [5, 12, 24] },
-  { id: 'power5hv', name: 'Power-5HV', amps: 30,  ports: 12, voltages: [24, 48] },
-  { id: 'power7hc', name: 'Power-7HC', amps: 100, ports: 16, voltages: [5, 12, 24] },
+  { id: 'power5',   name: 'Power-5',   amps: 50,  ports: 12, voltages: [5, 12, 24], priceUSD: 45 },
+  { id: 'power7',   name: 'Power-7',   amps: 50,  ports: 16, voltages: [5, 12, 24], priceUSD: 50 },
+  { id: 'power5hv', name: 'Power-5HV', amps: 30,  ports: 12, voltages: [24, 48],    priceUSD: 50 },
+  { id: 'power7hc', name: 'Power-7HC', amps: 100, ports: 16, voltages: [5, 12, 24], priceUSD: 65 },
 ];
 
 const capacityOf = c => Math.min(c.outputs * c.perOutputMax, c.totalMax ?? Infinity);
@@ -105,6 +106,11 @@ export function recommendSetup(strips, totals, controllers, getChip, recommendPS
   const psuTarget = totals.totalPower_W / 0.8;
   const psuCombo = recommendPSUs(psuTarget, totals.voltage);
 
+  // Cost roll-up
+  const brainCost = (brain?.priceUSD ?? 0) * (brain?.units ?? 0);
+  const distCost = distribution?.board?.priceUSD ? distribution.board.priceUSD * (distribution.count || 1) : 0;
+  const totalCost = brainCost + distCost;   // PSU cost added in caller (knows priceForPSU)
+
   return {
     brain,
     distribution,
@@ -112,5 +118,6 @@ export function recommendSetup(strips, totals, controllers, getChip, recommendPS
     psuTarget,
     voltage: totals.voltage,
     mixedVoltage: totals.mixedVoltage,
+    cost: { brain: brainCost, dist: distCost, controllerSubtotal: totalCost },
   };
 }

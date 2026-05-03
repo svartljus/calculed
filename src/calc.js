@@ -131,12 +131,37 @@ export function recommendAWG(currentA) {
   };
 }
 
-// Off-the-shelf PSU wattages by voltage. 5V high-current is exotic; 12V is the workhorse.
-const PSU_SIZES_BY_VOLTAGE = {
-  5:  [60, 100, 150, 200, 350],
-  12: [120, 200, 300, 400, 600],
-  24: [120, 240, 350, 480, 600],
+// Kingneonlux waterproof IP67 PSU catalog (flex-neon.com), prices USD list 2021-07.
+// 12V and 24V come in identical sizes/prices.
+const KINGNEONLUX_SIZES = [60, 100, 120, 150, 200, 250, 300, 350, 400, 500, 600];
+const KINGNEONLUX_PRICE_USD = {
+  60: 9, 100: 15, 120: 15.5, 150: 18, 200: 21, 250: 25,
+  300: 26, 350: 32, 400: 35, 500: 42, 600: 46,
 };
+
+// 5V doesn't appear in the Kingneonlux waterproof catalog — fall back to common
+// Mean Well LRS sizes when needed (no prices yet).
+const PSU_SIZES_BY_VOLTAGE = {
+  5:  [50, 100, 150, 200, 350],
+  12: KINGNEONLUX_SIZES,
+  24: KINGNEONLUX_SIZES,
+};
+
+export function priceForPSU(size, voltage = 12) {
+  if (voltage === 12 || voltage === 24) return KINGNEONLUX_PRICE_USD[size] ?? null;
+  return null;
+}
+
+export function totalPSUCost(combo, voltage = 12) {
+  let total = 0;
+  let unknown = false;
+  for (const { size, count } of combo) {
+    const p = priceForPSU(size, voltage);
+    if (p == null) { unknown = true; continue; }
+    total += p * count;
+  }
+  return { total, unknown };
+}
 
 // Greedy pack: as many of the largest as fit, then a single smaller PSU to
 // cover the remainder. Returns [{ size, count }, ...] in descending order.

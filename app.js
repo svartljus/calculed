@@ -1,5 +1,5 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
-import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS } from './src/calc.js';
+import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
 import { recommendSetup, outputsForController } from './src/setup.js';
 
@@ -280,6 +280,16 @@ function paintTotals() {
   }
   $rec('recPSUs').value = psuLine;
 
+  // Estimated cost — controllers + powerboards + PSUs
+  const psuCost = totalPSUCost(setup.psuCombo, setup.voltage);
+  const totalCost = (setup.cost?.controllerSubtotal ?? 0) + psuCost.total;
+  if (totalCost > 0) {
+    const note = psuCost.unknown ? ' + PSUs at this voltage' : '';
+    $rec('recCost').value = `~$${totalCost.toFixed(0)} (controller + power board + PSUs${note}, list prices, before shipping)`;
+  } else {
+    $rec('recCost').value = '—';
+  }
+
   // Alternatives — other viable controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
   const alts = recommendControllers(totals.totalPixels, 3, outputsByCtrl)
@@ -386,6 +396,11 @@ function projectAsPrompt() {
       lines.push(`- Power distribution: built-in to controller, connect PSU directly`);
     }
     if (setup.psuCombo.length) lines.push(`- PSUs: ${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V)`);
+
+    // Cost rollup
+    const psuCost = totalPSUCost(setup.psuCombo, setup.voltage);
+    const totalCost = (setup.cost?.controllerSubtotal ?? 0) + psuCost.total;
+    if (totalCost > 0) lines.push(`- Estimated cost: ~$${totalCost.toFixed(0)} (list, ex. shipping)`);
 
     // Alternatives — other viable controllers, chain-aware
     const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
