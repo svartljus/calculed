@@ -345,10 +345,15 @@ button.info {
 }
 button.info:hover { color: inherit; background: var(--soft); }
 
-form#project > button {
-  margin-top: 0.25rem;
-  margin-right: 0.25rem;
+form#project > button#add-strip {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border-style: dashed;
+  color: var(--muted);
 }
+form#project > button#add-strip:hover { color: inherit; border-style: solid; }
 
 /* Summary stats — top of the recommendation block */
 .summary-stats {
