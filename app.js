@@ -497,16 +497,6 @@ function paintTotals() {
     };
   });
 
-  // Optional split-PSU alternative note when bothEnds is in use anywhere
-  const anyBothEnds = project.strips.some(s => s.injection === 'bothEnds');
-  if (anyBothEnds && rows.some(r => /PSU/.test(r.item))) {
-    rows.push({
-      item: '— or split per injection end —',
-      notes: 'Halve the PSU size; place one at each strip end (no long heavy wiring)',
-      qty: '', unit: '', subtotal: '', muted: true,
-    });
-  }
-
   const fmtUSD = n => formatPrice(n, project.currency);
 
   // Render rows grouped by category, with a section header between groups.
