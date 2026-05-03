@@ -304,6 +304,9 @@ function paintCard(card, strip) {
   // Overall strip status — green if planned drop is within tolerance, wire isn't
   // over capacity, AND FPS isn't critically low.
   card.dataset.status = inj.planned_OK && !awg.balanced.overCapacity && !fpsLow ? 'ok' : 'warn';
+
+  // Voltage class for the subtle background tint
+  card.dataset.voltage = String(chip.voltage);
 }
 
 function paintTotals() {
@@ -550,6 +553,48 @@ document.getElementById('add-strip').addEventListener('click', () => {
   stripsList.appendChild(renderStrip(strip));
   syncFromDom();
   scheduleSave();
+});
+
+// Drag-to-reorder strips. Native HTML5 drag API on each <article>.
+let dragSrcLi = null;
+stripsList.addEventListener('dragstart', (e) => {
+  const li = e.target.closest('li');
+  if (!li || !e.target.closest('article')) return;
+  dragSrcLi = li;
+  li.querySelector('article')?.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', li.querySelector('article').dataset.id);
+});
+stripsList.addEventListener('dragover', (e) => {
+  const overLi = e.target.closest('li');
+  if (!overLi || !dragSrcLi || overLi === dragSrcLi) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  // visual hint
+  for (const li of stripsList.children) li.querySelector('article')?.classList.remove('drag-over');
+  overLi.querySelector('article')?.classList.add('drag-over');
+});
+stripsList.addEventListener('dragleave', (e) => {
+  const li = e.target.closest('li');
+  if (li) li.querySelector('article')?.classList.remove('drag-over');
+});
+stripsList.addEventListener('drop', (e) => {
+  const overLi = e.target.closest('li');
+  if (!overLi || !dragSrcLi || overLi === dragSrcLi) return;
+  e.preventDefault();
+  // Insert source before/after based on position
+  const srcRect = dragSrcLi.getBoundingClientRect();
+  const overRect = overLi.getBoundingClientRect();
+  if (srcRect.top < overRect.top) overLi.after(dragSrcLi);
+  else overLi.before(dragSrcLi);
+  syncFromDom();
+  scheduleSave();
+});
+stripsList.addEventListener('dragend', () => {
+  for (const li of stripsList.children) {
+    li.querySelector('article')?.classList.remove('dragging', 'drag-over');
+  }
+  dragSrcLi = null;
 });
 
 stripsList.addEventListener('click', (e) => {
