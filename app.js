@@ -53,7 +53,8 @@ function loadFromStorage() {
       date:   typeof parsed.meta.date   === 'string' ? parsed.meta.date   : '',
     } : { client: '', venue: '', date: '' };
     const currency = FX[parsed.currency] ? parsed.currency : 'USD';
-    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency };
+    const stock = parsed.stock && typeof parsed.stock === 'object' ? parsed.stock : {};
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency, stock };
   } catch {
     return null;
   }
@@ -141,6 +142,7 @@ const project = stored ?? {
 if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
 if (!project.meta) project.meta = { client: '', venue: '', date: '' };
 if (!project.currency) project.currency = 'USD';
+if (!project.stock) project.stock = {};
 
 const projectNameInput = document.getElementById('project-name');
 projectNameInput.value = project.name || '';
@@ -385,10 +387,9 @@ function paintTotals() {
     const existing = aggregated.get(key);
     if (existing) {
       existing.qty += qty;
-      if (existing.unit != null && base.unit != null) existing.subtotal = (existing.subtotal || 0) + base.unit * qty;
       if (contrib && !existing.contrib.includes(contrib)) existing.contrib.push(contrib);
     } else {
-      aggregated.set(key, { ...base, qty, subtotal: base.unit != null ? base.unit * qty : null, contrib: contrib ? [contrib] : [] });
+      aggregated.set(key, { ...base, key, qty, contrib: contrib ? [contrib] : [] });
     }
   };
 
@@ -474,14 +475,25 @@ function paintTotals() {
     }
   }
 
-  // Build rows from the aggregated map; annotate notes with which strip(s) the item is for
-  const rows = [...aggregated.values()].map(it => ({
-    item: it.item,
-    notes: it.notes + (it.contrib.length > 0 ? ` · for ${it.contrib.join(', ')}` : ''),
-    qty: it.qty,
-    unit: it.unit,
-    subtotal: it.subtotal,
-  }));
+  // Build rows from the aggregated map; annotate notes with which strip(s) the item is for.
+  // Subtract user's in-stock qty to compute "Buy" — that's what the subtotal is calculated from.
+  const rows = [...aggregated.values()].map(it => {
+    const stock = Math.max(0, Number(project.stock?.[it.key]) || 0);
+    const buy = Math.max(0, it.qty - stock);
+    const subtotal = it.unit != null ? it.unit * buy : null;
+    return {
+      key: it.key,
+      category: it.category,
+      item: it.item,
+      notes: it.notes + (it.contrib.length > 0 ? ` · for ${it.contrib.join(', ')}` : ''),
+      qty: it.qty,
+      stock,
+      buy,
+      unit: it.unit,
+      subtotal,
+      qtyUnit: it.qtyUnit,
+    };
+  });
 
   // Optional split-PSU alternative note when bothEnds is in use anywhere
   const anyBothEnds = project.strips.some(s => s.injection === 'bothEnds');
@@ -513,35 +525,51 @@ function paintTotals() {
 
   const bomTrs = [];
   let lastCat = null;
+  // Round up integer-only displays (meters always round up — you buy whole units).
+  const intCeil = n => Number.isFinite(n) ? Math.ceil(n) : 0;
+  const fmtNum = (n, unit) => unit === 'm' ? `${intCeil(n)} m` : `${intCeil(n)}`;
+
   for (const r of sortedRows) {
     const cat = r.category || 'other';
     if (cat !== lastCat) {
       const headerTr = document.createElement('tr');
       headerTr.className = 'section';
-      headerTr.innerHTML = `<th colspan="5">${CAT_LABEL[cat] || cat}</th>`;
+      headerTr.innerHTML = `<th colspan="7">${CAT_LABEL[cat] || cat}</th>`;
       bomTrs.push(headerTr);
       lastCat = cat;
     }
     const tr = document.createElement('tr');
     if (r.muted) tr.classList.add('muted');
-    const qtyDisplay = r.qty === '' ? '' :
-      (r.qtyUnit === 'm' ? `${Math.round(r.qty)} m` : r.qty);
-    const unitDisplay = r.unit === '' ? '' :
-      (r.unit != null
-        ? (r.qtyUnit === 'm' ? `${fmtUSD(r.unit)}/m` : fmtUSD(r.unit))
-        : '—');
+    const stockDisplay = `<input type="number" min="0" step="1" data-stock-key="${r.key}" value="${intCeil(r.stock || 0) || ''}" placeholder="0" class="stock-input">`;
+    const unitDisplay = r.unit != null
+      ? (r.qtyUnit === 'm' ? `${fmtUSD(r.unit)}/m` : fmtUSD(r.unit))
+      : '—';
+    // Recompute buy with ceiled stock
+    const need = intCeil(r.qty);
+    const stockVal = intCeil(r.stock || 0);
+    const buy = Math.max(0, need - stockVal);
+    const subtotal = r.unit != null ? r.unit * buy : null;
     tr.innerHTML = `
       <td>${r.item}</td>
       <td>${r.notes || ''}</td>
-      <td class="num">${qtyDisplay}</td>
+      <td class="num">${fmtNum(need, r.qtyUnit)}</td>
+      <td class="num">${stockDisplay}</td>
+      <td class="num">${fmtNum(buy, r.qtyUnit)}</td>
       <td class="num">${unitDisplay}</td>
-      <td class="num">${r.subtotal === '' ? '' : (r.subtotal != null ? fmtUSD(r.subtotal) : '—')}</td>
+      <td class="num">${subtotal != null ? fmtUSD(subtotal) : '—'}</td>
     `;
     bomTrs.push(tr);
   }
   bomBody.replaceChildren(...bomTrs);
 
-  const grandTotal = rows.reduce((sum, r) => sum + (typeof r.subtotal === 'number' ? r.subtotal : 0), 0);
+  // Grand total = sum of (unit × buy), where buy = need − in-stock (per row).
+  const grandTotal = rows.reduce((sum, r) => {
+    if (r.unit == null) return sum;
+    const need = Math.ceil(r.qty);
+    const stock = Math.ceil(r.stock || 0);
+    const buy = Math.max(0, need - stock);
+    return sum + r.unit * buy;
+  }, 0);
   $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';
 
   // Cost per pixel — quick comparability metric across projects
@@ -680,6 +708,18 @@ stripsList.addEventListener('click', (e) => {
 });
 
 document.getElementById('print').addEventListener('click', () => window.print());
+
+// Stock inputs in the BOM — `change` fires on blur, so the table re-render
+// (which destroys the input) doesn't fight live typing.
+document.getElementById('bom').addEventListener('change', (e) => {
+  if (!e.target.matches('input[data-stock-key]')) return;
+  const key = e.target.dataset.stockKey;
+  const qty = Math.max(0, Math.floor(Number(e.target.value) || 0));
+  if (qty > 0) project.stock[key] = qty;
+  else delete project.stock[key];
+  paintTotals();
+  scheduleSave();
+});
 
 document.getElementById('export-json').addEventListener('click', () => {
   const filename = `${(project.name || 'calculed').toLowerCase().replace(/\s+/g, '-')}.json`;
