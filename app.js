@@ -1,4 +1,4 @@
-import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
+import { CHIPS, DEFAULT_CHIP_ID, getChip, priceForStripMeter } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost, priceForPSU } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
 import { recommendSetup, outputsForController, recommendPremiumSetup, assignOutputs } from './src/setup.js';
@@ -380,14 +380,15 @@ function paintTotals() {
   // LED strips — one aggregated row per (chip, density) across all cards × iter
   for (const { card, cardIdx, iter } of perCardSetups) {
     const chip = getChip(card.chipId);
-    if (!chip || !chip.pricePerMeterUSD) continue;
+    const stripPrice = priceForStripMeter(chip, card.density);
+    if (!chip || stripPrice == null) continue;
     const visibleM = card.lengthMode === 'meters' ? card.length : card.length / card.density;
     const physicalM = visibleM * (card.runs || 1);   // doubled = 2× physical strip per visible m
     const totalM = physicalM * (card.quantity || 1) * iter;
     addItem(`strip-${chip.id}-${card.density}`, {
       item: `${chip.name} strip ${card.density}/m`,
       notes: `${physicalM.toFixed(1)} m physical × ${card.quantity || 1} qty${iter > 1 ? ` × ${iter} iter` : ''}`,
-      unit: chip.pricePerMeterUSD,
+      unit: stripPrice,
       qtyUnit: 'm',
     }, totalM, `Strip ${cardIdx + 1}`);
   }
@@ -743,11 +744,12 @@ function projectAsPrompt() {
     const chip = getChip(s.chipId);
     if (!chip) continue;
     const iter = s.iterations || 1;
-    if (chip.pricePerMeterUSD) {
+    const stripPrice = priceForStripMeter(chip, s.density);
+    if (stripPrice != null) {
       const visibleM = s.lengthMode === 'meters' ? s.length : s.length / s.density;
       const physicalM = visibleM * (s.runs || 1);
       const totalM = physicalM * (s.quantity || 1) * iter;
-      add(`strip-${chip.id}-${s.density}`, `${chip.name} strip ${s.density}/m`, totalM, chip.pricePerMeterUSD, 'm');
+      add(`strip-${chip.id}-${s.density}`, `${chip.name} strip ${s.density}/m`, totalM, stripPrice, 'm');
     }
     const cardSetup = recommendSetup([{ ...s, iterations: 1 }], computeProjectTotals([{ ...s, iterations: 1 }], getChip), CONTROLLERS, getChip, recommendPSUs, project.prefs);
     if (!cardSetup) continue;
