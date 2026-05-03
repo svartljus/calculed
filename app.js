@@ -132,7 +132,9 @@ function paintCard(card, strip) {
   if (!chip) return;
   const draw = computeStripDraw(strip, chip);
   const inj  = computeInjection(strip, chip);
-  const perFeedCurrent = inj.current_A / inj.nFeeds;
+  // Size wire/fuse for the user's actual planned feed count, not the recommendation.
+  const plannedFeedCount = strip.injection === 'bothEnds' ? 2 : 1;
+  const perFeedCurrent = inj.current_A / plannedFeedCount;
   const awg  = recommendAWG(perFeedCurrent);
   const fuse = recommendFuse(perFeedCurrent);
   const data = dataRecommendation(strip, chip);
