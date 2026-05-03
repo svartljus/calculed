@@ -62,13 +62,69 @@
         <dt>Other Quinled options</dt> <dd><output name="recAlts">—</output></dd>
       </dl>
 
-      <details class="output-map">
-        <summary>Output assignment — wiring map for install</summary>
+      <section class="output-map">
+        <h3>Output assignment — wiring map for install</h3>
         <table id="output-table">
           <thead><tr><th>Brain</th><th>Output</th><th>Strips on this output</th><th class="num">Pixels</th></tr></thead>
           <tbody></tbody>
         </table>
-      </details>
+      </section>
+
+      <section class="install-checklist">
+        <h3>Install checklist &amp; tools</h3>
+        <div class="checklist-cols">
+          <div>
+            <h4>Often-forgotten items</h4>
+            <ul>
+              <li>Heat shrink tubing (assorted sizes)</li>
+              <li>Wire ferrules — for stranded wire into screw terminals</li>
+              <li>JST SM 3-pin connectors (1-wire) or 4-pin (SPI)</li>
+              <li>Self-amalgamating tape for outdoor waterproofing</li>
+              <li>Cable ties + label maker / wire labels</li>
+              <li>Spare fuses (one of each value used)</li>
+              <li>DC barrel jacks or screw terminal blocks</li>
+              <li>Silicone glue / butyl for IP67 strip end caps</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Tools</h4>
+            <ul>
+              <li>Wire stripper + ferrule crimper</li>
+              <li>Soldering iron + lead-free solder + flux</li>
+              <li>Heat gun (or lighter for small heat shrink)</li>
+              <li>Multimeter (V, A, continuity)</li>
+              <li>Small flat screwdriver for terminal blocks</li>
+              <li>USB-A → ESP32 cable for WLED firmware flashing</li>
+              <li>Phone tripod / ladder for matrix install photos</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Best practices</h4>
+            <ul>
+              <li>Bench-test every strip <em>before</em> final install</li>
+              <li>Label both ends of every cable</li>
+              <li>Photograph the wiring before closing enclosures</li>
+              <li>Verify polarity (red = +, black = −) twice before power on</li>
+              <li>Strain-relief at every connector — pull on cables, not solder joints</li>
+              <li>Power-on with no animation first, then add effects</li>
+              <li>Run the WLED Settings &gt; LED Preferences &gt; Brightness limit to your PSU's amp rating</li>
+              <li>For long data runs, add a 330–470 Ω series resistor at the strip end</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Safety &amp; gotchas</h4>
+            <ul>
+              <li>Double-check chip voltage (5V vs 12V) before connecting power — wrong voltage destroys strips instantly</li>
+              <li>Fuse every PSU output, not just the AC input</li>
+              <li>Match wire gauge to current — undersized wire is a fire hazard</li>
+              <li>Earth/ground metal enclosures and PSU chassis</li>
+              <li>WS2815's data backup wire helps but doesn't replace good soldering</li>
+              <li>For permanent installs, use crimped ferrules — solder cracks under vibration</li>
+              <li>Keep a Wago-style spare for emergency reconnects on site</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
       <footer class="rec-actions">
         <button type="button" id="copy-prompt">Copy as prompt</button>

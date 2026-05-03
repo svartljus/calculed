@@ -310,14 +310,13 @@ function paintCard(card, strip) {
   // over capacity, AND FPS isn't critically low.
   card.dataset.status = inj.planned_OK && !awg.balanced.overCapacity && !fpsLow ? 'ok' : 'warn';
 
-  // Voltage class for the subtle background tint
-  card.dataset.voltage = String(chip.voltage);
-
   // Strip number badge — position in stripsList (1-based)
+  // Per-card hue cycles through 8 palette entries by index.
   const allCards = [...stripsList.querySelectorAll('article')];
   const idx = allCards.indexOf(card);
   const numEl = card.querySelector('.strip-num');
   if (numEl) numEl.textContent = idx >= 0 ? String(idx + 1) : '';
+  if (idx >= 0) card.style.setProperty('--strip-hue', `var(--strip-hue-${(idx % 8) + 1})`);
 }
 
 function paintTotals() {
@@ -380,7 +379,8 @@ function paintTotals() {
   }
 
   // Aggregate hardware across all per-card setups, summing identical models.
-  const aggregated = new Map();   // key → { item, notes, qty, unit, subtotal, contrib }
+  // Each item has a category for grouping in the rendered BOM.
+  const aggregated = new Map();   // key → { category, item, notes, qty, unit, subtotal, contrib }
   const addItem = (key, base, qty, contrib) => {
     const existing = aggregated.get(key);
     if (existing) {
@@ -401,6 +401,7 @@ function paintTotals() {
     const physicalM = visibleM * (card.runs || 1);   // doubled = 2× physical strip per visible m
     const totalM = physicalM * (card.quantity || 1) * iter;
     addItem(`strip-${chip.id}-${card.density}`, {
+      category: 'strips',
       item: `${chip.name} strip ${card.density}/m`,
       notes: `${physicalM.toFixed(1)} m physical × ${card.quantity || 1} qty${iter > 1 ? ` × ${iter} iter` : ''}`,
       unit: stripPrice,
@@ -413,6 +414,7 @@ function paintTotals() {
     const cardLabel = `Strip ${cardIdx + 1}${iter > 1 ? ` × ${iter}` : ''}`;
     if (setup.brain) {
       addItem(`brain-${setup.brain.id}`, {
+        category: 'controllers',
         item: setup.brain.name,
         notes: `${setup.brain.outputs} outputs each`,
         unit: setup.brain.priceUSD,
@@ -421,18 +423,21 @@ function paintTotals() {
     const dist = setup.distribution;
     if (dist?.kind === 'paired' && dist.board) {
       addItem(`pb-${dist.board.id}`, {
+        category: 'power',
         item: dist.board.name,
         notes: `paired w/ brain — ${dist.board.amps} A, ${dist.board.ports} ports`,
         unit: dist.board.priceUSD,
       }, dist.count * iter, cardLabel);
     } else if (dist?.kind === 'central' && dist.board) {
       addItem(`pb-${dist.board.id}-pdu`, {
+        category: 'power',
         item: `${dist.board.name} (PDU)`,
         notes: `${dist.board.amps} A, ${dist.board.ports} fused ports`,
         unit: dist.board.priceUSD,
       }, 1 * iter, cardLabel);
     } else if (dist?.kind === 'busbar') {
       addItem('busbar', {
+        category: 'power',
         item: 'DC distribution block',
         notes: 'fused terminal block — splits PSU feed across multiple controllers',
         unit: 10,
@@ -441,6 +446,7 @@ function paintTotals() {
     for (const { size, count } of setup.psuCombo) {
       const unit = priceForPSU(size, setup.voltage);
       addItem(`psu-${setup.voltage}-${size}`, {
+        category: 'psus',
         item: `${size} W ${setup.voltage}V PSU`,
         notes: setup.voltage <= 24 ? 'Kingneonlux IP67' : '',
         unit,
@@ -448,7 +454,6 @@ function paintTotals() {
     }
 
     // Feed wire — by recommended AWG. Per strip in this card, each feed = `feedRunMeters`.
-    // Both-ends adds a second feed.
     if (card.feedRunMeters > 0) {
       const chip = getChip(card.chipId);
       if (chip) {
@@ -459,9 +464,10 @@ function paintTotals() {
         const feedCurrent = inj.current_A / feedsPerStrip;
         const awg = recommendAWG(feedCurrent);
         addItem(`wire-${awg.balanced.awg}`, {
+          category: 'wiring',
           item: `${awg.balanced.awg} AWG / ${awg.balanced.mm2} mm² wire`,
           notes: `feed wire — ${card.feedRunMeters} m per feed × ${feedsPerStrip} feed${feedsPerStrip > 1 ? 's' : ''}/strip`,
-          unit: null,   // wire pricing varies wildly; skip the cost
+          unit: null,
           qtyUnit: 'm',
         }, totalWire_m, cardLabel);
       }
@@ -489,8 +495,33 @@ function paintTotals() {
 
   const fmtUSD = n => formatPrice(n, project.currency);
 
-  // Render rows
-  bomBody.replaceChildren(...rows.map(r => {
+  // Render rows grouped by category, with a section header between groups.
+  const CAT_ORDER = ['strips', 'controllers', 'power', 'psus', 'wiring', 'other'];
+  const CAT_LABEL = {
+    strips: 'LED Strips',
+    controllers: 'Controllers',
+    power: 'Power Distribution',
+    psus: 'Power Supplies',
+    wiring: 'Wiring',
+    other: 'Other',
+  };
+  const sortedRows = [...rows].sort((a, b) => {
+    const ai = CAT_ORDER.indexOf(a.category || 'other');
+    const bi = CAT_ORDER.indexOf(b.category || 'other');
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+
+  const bomTrs = [];
+  let lastCat = null;
+  for (const r of sortedRows) {
+    const cat = r.category || 'other';
+    if (cat !== lastCat) {
+      const headerTr = document.createElement('tr');
+      headerTr.className = 'section';
+      headerTr.innerHTML = `<th colspan="5">${CAT_LABEL[cat] || cat}</th>`;
+      bomTrs.push(headerTr);
+      lastCat = cat;
+    }
     const tr = document.createElement('tr');
     if (r.muted) tr.classList.add('muted');
     const qtyDisplay = r.qty === '' ? '' :
@@ -506,8 +537,9 @@ function paintTotals() {
       <td class="num">${unitDisplay}</td>
       <td class="num">${r.subtotal === '' ? '' : (r.subtotal != null ? fmtUSD(r.subtotal) : '—')}</td>
     `;
-    return tr;
-  }));
+    bomTrs.push(tr);
+  }
+  bomBody.replaceChildren(...bomTrs);
 
   const grandTotal = rows.reduce((sum, r) => sum + (typeof r.subtotal === 'number' ? r.subtotal : 0), 0);
   $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';

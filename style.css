@@ -23,12 +23,18 @@
 
   /* Status colors */
   --ok:    #16a34a;
-  --warn:  #d97706;
+  --warn:  #dc2626;
 
-  /* Voltage hues — subtle accent per chip voltage class */
-  --v5:    #f59e0b;   /* 5V — warm amber */
-  --v12:   #2563eb;   /* 12V — cool blue */
-  --v24:   #7c3aed;   /* 24V — violet */
+  /* Per-strip-card hue palette (rotates through this list by card index).
+     Picked for distinguishability and low chroma so backgrounds stay calm. */
+  --strip-hue-1: #fde68a;  /* amber  */
+  --strip-hue-2: #bfdbfe;  /* blue   */
+  --strip-hue-3: #bbf7d0;  /* mint   */
+  --strip-hue-4: #fbcfe8;  /* pink   */
+  --strip-hue-5: #c7d2fe;  /* indigo */
+  --strip-hue-6: #fed7aa;  /* peach  */
+  --strip-hue-7: #d8b4fe;  /* violet */
+  --strip-hue-8: #99f6e4;  /* teal   */
 
   /* Typography */
   --font:     'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
@@ -114,6 +120,18 @@ main { display: grid; gap: 0.75rem; }
 #bom td { padding: 0.4rem 0.75rem 0.4rem 0; vertical-align: baseline; }
 #bom tbody td:first-child { font-weight: 600; }
 #bom tbody tr.muted td { color: var(--muted); font-weight: 400; font-style: italic; }
+#bom tbody tr.section th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: var(--fs-mini);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--s-3) 0 var(--s-1) 0;
+  border-top: var(--rule);
+  border-bottom: 0;
+}
+#bom tbody tr.section:first-child th { border-top: 0; padding-top: 0; }
 #bom tfoot td {
   border-top: var(--rule);
   padding-top: 0.6rem;
@@ -139,16 +157,33 @@ main { display: grid; gap: 0.75rem; }
 .rec-note { margin: 0.5rem 0 0 0; font-size: var(--fs-small); color: var(--muted); }
 .rec-note:empty { display: none; }
 
-.output-map { margin-top: 0.75rem; font-size: var(--fs-small); }
-.output-map > summary {
-  cursor: pointer;
+.output-map { margin-top: var(--s-3); font-size: var(--fs-small); }
+.output-map h3,
+.install-checklist h3 {
+  margin: 0 0 var(--s-2) 0;
   color: var(--muted);
-  padding: 0.25rem 0;
   font-size: var(--fs-mini);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  font-weight: 700;
 }
-.output-map[open] > summary { margin-bottom: 0.5rem; }
+
+.install-checklist { margin-top: var(--s-4); padding-top: var(--s-4); border-top: var(--rule); }
+.checklist-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--s-3) var(--s-6);
+  font-size: var(--fs-small);
+}
+.checklist-cols h4 {
+  margin: 0 0 var(--s-1) 0;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: inherit;
+}
+.checklist-cols ul { margin: 0; padding-left: var(--s-4); color: var(--muted); }
+.checklist-cols li { margin-bottom: 0.15rem; }
+.checklist-cols em { font-style: italic; color: inherit; }
 #output-table {
   width: 100%;
   border-collapse: collapse;
@@ -212,27 +247,13 @@ main { display: grid; gap: 0.75rem; }
 
 article {
   border: var(--rule);
-  border-left: 4px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-radius: 6px;
-  padding: 0.6rem 0.9rem 0.75rem;
+  border-radius: var(--r-md);
+  padding: 0.6rem 0.9rem var(--s-3);
   display: grid;
-  gap: 0.5rem;
-  background: color-mix(in srgb, currentColor 2%, transparent);
-  transition: border-left-color 0.15s, opacity 0.15s, transform 0.15s;
+  gap: var(--s-2);
+  /* Per-strip background tint — set via --strip-hue inline by JS based on card index. */
+  background: color-mix(in srgb, var(--strip-hue, currentColor) 30%, Canvas);
 }
-
-/* Voltage hue — subtle background tint, scoped to chip's nominal voltage */
-article[data-voltage="5"]  { background: color-mix(in srgb, var(--v5)  10%, transparent); }
-article[data-voltage="12"] { background: color-mix(in srgb, var(--v12) 12%, transparent); }
-article[data-voltage="24"] { background: color-mix(in srgb, var(--v24) 12%, transparent); }
-article[data-voltage="5"]  > .strip-config legend,
-article[data-voltage="12"] > .strip-config legend,
-article[data-voltage="24"] > .strip-config legend { color: var(--muted); }
-article:hover { box-shadow: 0 1px 0 color-mix(in srgb, currentColor 10%, transparent), 0 4px 12px color-mix(in srgb, currentColor 5%, transparent); }
-
-/* Status border overrides voltage tint on the left edge */
-article[data-status="ok"]   { border-left-color: var(--ok); }
-article[data-status="warn"] { border-left-color: var(--warn); }
 
 /* Drag-to-reorder visuals */
 article { cursor: grab; }
@@ -354,22 +375,27 @@ label:has(> input:disabled) { color: var(--muted); }
 /* Qty / Iter inputs — narrow */
 input[name="quantity"], input[name="iterations"] { width: 3.5rem; text-align: right; }
 
-/* Strip number badge — leftmost in each strip card */
+/* Strip number badge — leftmost in each strip card.
+   Background uses the card's --strip-hue so the badge matches the card.
+   Border ring colored by status (green = OK, red = warning). */
 .strip-num {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
+  min-width: 1.7rem;
+  height: 1.7rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: color-mix(in srgb, currentColor 12%, transparent);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--strip-hue, currentColor) 80%, Canvas);
+  color: CanvasText;
   font-size: var(--fs-mini);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  border: 2px solid color-mix(in srgb, currentColor 20%, transparent);
 }
 .strip-num::before { content: '#'; opacity: 0.6; margin-right: 0.1rem; }
+article[data-status="ok"]   .strip-num { border-color: var(--ok); }
+article[data-status="warn"] .strip-num { border-color: var(--warn); }
 
 /* Per-strip notes — borderless inline */
 .strip-notes {
@@ -458,7 +484,6 @@ button {
   background: transparent;
   color: inherit;
   cursor: pointer;
-  transition: background 0.1s;
 }
 button:hover:not(:disabled) { background: var(--soft); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
