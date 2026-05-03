@@ -70,30 +70,46 @@ function tryBrain(c, strips, totalPixels, getChip) {
   return { ...c, units, outputsUsed: outputs, chainsTotal };
 }
 
-// Default: pick the smallest controller that fits within `maxUnits` units.
-function pickCheapestBrain(controllers, strips, totalPixels, getChip, maxUnits = 4) {
-  for (const c of controllers) {
-    const r = tryBrain(c, strips, totalPixels, getChip);
-    if (r.units <= maxUnits) return r;
-  }
-  return null;
+// Total system cost for a brain candidate = brains + their required distribution.
+function systemCost(brain, totalCurrent, voltage) {
+  const brainCost = (brain.priceUSD || 0) * brain.units;
+  const dist = pickDistribution(brain, totalCurrent, voltage, brain.units);
+  const distCost = dist?.board?.priceUSD ? dist.board.priceUSD * (dist.count || 1) : 0;
+  return brainCost + distCost;
 }
 
-// "Fewer devices" mode: pick the option with the smallest unit count, including
-// premium PixLite controllers as candidates (they're often the only way to fit a
-// large project in 1-2 units). Tie-break by cheapest total.
-function pickFewestUnitsBrain(controllers, strips, totalPixels, getChip) {
+// Total physical board count = brains + powerboards (PSU not counted).
+function systemDeviceCount(brain, totalCurrent, voltage) {
+  const dist = pickDistribution(brain, totalCurrent, voltage, brain.units);
+  const distCount = dist?.board ? (dist.count || 1) : 0;
+  return brain.units + distCount;
+}
+
+// Default: pick the cheapest TOTAL system (brain + powerboards) within maxUnits.
+function pickCheapestBrain(controllers, strips, totalPixels, getChip, totalCurrent, voltage, maxUnits = 4) {
+  let best = null, bestCost = Infinity;
+  for (const c of controllers) {
+    const r = tryBrain(c, strips, totalPixels, getChip);
+    if (r.units > maxUnits) continue;
+    const cost = systemCost(r, totalCurrent, voltage);
+    if (cost < bestCost) { best = r; bestCost = cost; }
+  }
+  return best;
+}
+
+// "Fewer devices" mode: smallest TOTAL device count (brains + powerboards),
+// including premium PixLite as candidates. Tie-break by cheapest total.
+function pickFewestUnitsBrain(controllers, strips, totalPixels, getChip, totalCurrent, voltage) {
   const ids = new Set(controllers.map(c => c.id));
   const candidates = [...controllers, ...PIXLITE_CONTROLLERS.filter(c => !ids.has(c.id))];
-  let best = null;
+  let best = null, bestCount = Infinity, bestCost = Infinity;
   for (const c of candidates) {
     const r = tryBrain(c, strips, totalPixels, getChip);
     if (r.units > 4) continue;
-    const cost = (r.priceUSD || 0) * r.units;
-    if (!best
-        || r.units < best.units
-        || (r.units === best.units && cost < (best.priceUSD || 0) * best.units)) {
-      best = r;
+    const count = systemDeviceCount(r, totalCurrent, voltage);
+    const cost  = systemCost(r, totalCurrent, voltage);
+    if (count < bestCount || (count === bestCount && cost < bestCost)) {
+      best = r; bestCount = count; bestCost = cost;
     }
   }
   return best;
@@ -133,8 +149,8 @@ export function recommendSetup(strips, totals, controllers, getChip, recommendPS
   if (!totals.totalPixels || !totals.outputCount) return null;
 
   const brain = prefs.minDevices
-    ? pickFewestUnitsBrain(controllers, strips, totals.totalPixels, getChip)
-    : pickCheapestBrain(controllers, strips, totals.totalPixels, getChip);
+    ? pickFewestUnitsBrain(controllers, strips, totals.totalPixels, getChip, totals.totalCurrent_A, totals.voltage)
+    : pickCheapestBrain(controllers, strips, totals.totalPixels, getChip, totals.totalCurrent_A, totals.voltage);
   const distribution = brain
     ? pickDistribution(brain, totals.totalCurrent_A, totals.voltage, brain.units, !!prefs.centralPower)
     : null;
