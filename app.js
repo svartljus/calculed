@@ -54,7 +54,7 @@ function makeDefaultStrip() {
     length: 5,
     runs: 1,
     brightness: 255,
-    colorMode: 'average',
+    colorMode: 'white',
     dataRunMeters: 0,
     maxDropPercent: 20,
   };
