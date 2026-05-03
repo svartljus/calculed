@@ -54,9 +54,9 @@ function makeDefaultStrip() {
     length: 5,
     runs: 1,
     brightness: 255,
-    colorMode: 'white',
-    dataRunMeters: 0.3,
-    maxDropPercent: 10,
+    colorMode: 'average',
+    dataRunMeters: 0,
+    maxDropPercent: 20,
   };
 }
 
@@ -80,9 +80,9 @@ function renderStrip(strip) {
   node.querySelector('input[name="length"]').value = strip.length;
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
-  node.querySelector('input[name="brightness"]').value = strip.brightness;
+  const brightnessRadio = node.querySelector(`input[name="brightness"][value="${strip.brightness}"]`);
+  if (brightnessRadio) brightnessRadio.checked = true;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
-  node.querySelector('input[name="dataRunMeters"]').value = strip.dataRunMeters;
 
   return node;
 }
@@ -103,10 +103,10 @@ function readStripFromCard(card) {
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
-    brightness: Number(card.querySelector('input[name="brightness"]').value),
+    brightness: Number(card.querySelector('input[name="brightness"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
-    dataRunMeters: Number(card.querySelector('input[name="dataRunMeters"]').value),
-    maxDropPercent: 10,
+    dataRunMeters: 0,
+    maxDropPercent: 20,
   };
 }
 
@@ -180,9 +180,6 @@ function paintCard(card, strip) {
   ].filter(Boolean).join('\n');
   $('dataShort').value = shortLabel;
   card.querySelector('[data-info]').title = tooltip;
-
-  const brightLabel = card.querySelector('label:has(> input[name="brightness"])');
-  if (brightLabel) brightLabel.dataset.printValue = `value: ${strip.brightness}/255`;
 }
 
 function paintTotals() {

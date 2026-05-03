@@ -299,6 +299,4 @@ dialog form p { margin: 0; grid-column: 1 / -1; }
   #totals { position: static; border-top: 2px solid black; backdrop-filter: none; }
   article { break-inside: avoid; box-shadow: none; border: 1px solid black; page-break-inside: avoid; }
   fieldset { border: 0; }
-  input[type="range"] { display: none; }
-  label:has(> input[type="range"][name="brightness"])::after { content: attr(data-print-value); margin-left: 0.5em; }
 }

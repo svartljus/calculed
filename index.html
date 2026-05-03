@@ -72,14 +72,20 @@
         <details class="advanced" open>
           <summary>Advanced</summary>
           <fieldset>
-            <label>Brightness <input type="range" name="brightness" min="0" max="255" value="255"></label>
+            <div class="field">
+              <span class="field-label">Brightness</span>
+              <div class="pills" role="radiogroup" aria-label="Max brightness">
+                <label><input type="radio" name="brightness" value="128">50%</label>
+                <label><input type="radio" name="brightness" value="191">75%</label>
+                <label><input type="radio" name="brightness" value="255" checked>100%</label>
+              </div>
+            </div>
             <label>Color
               <select name="colorMode">
-                <option value="white" selected>white (worst case)</option>
-                <option value="average">average (~⅓ duty)</option>
+                <option value="white">white (worst case)</option>
+                <option value="average" selected>average (~⅓ duty)</option>
               </select>
             </label>
-            <label>Data wire <input type="number" name="dataRunMeters" step="0.1" min="0" value="0.3"> m</label>
           </fieldset>
         </details>
 
