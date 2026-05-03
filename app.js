@@ -335,21 +335,6 @@ function paintTotals() {
     });
   }
 
-  // Fuses count (project-wide) — one per feed
-  const totalFeeds = project.strips.reduce((sum, s) => {
-    const feedsPerStrip = s.injection === 'bothEnds' ? 2 : 1;
-    return sum + (s.quantity || 1) * feedsPerStrip;
-  }, 0);
-  if (totalFeeds > 0) {
-    rows.push({
-      item: 'Inline glass fuses',
-      notes: 'one per power-feed wire',
-      qty: totalFeeds,
-      unit: null,
-      subtotal: null,
-    });
-  }
-
   // Render rows
   bomBody.replaceChildren(...rows.map(r => {
     const tr = document.createElement('tr');
