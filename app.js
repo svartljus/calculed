@@ -234,7 +234,11 @@ function paintTotals() {
 
   const ctrls = recommendControllers(totals.totalPixels);
   const ctrlText = ctrls
-    .map(c => `${c.name} (${c.outputs}×${c.perOutputMax})${c.fits ? '' : ' — needs splitting'}`)
+    .map(c => {
+      const unit = c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : '';
+      const cap = c.totalMax ? `${c.totalMax} px` : `${c.outputs}×${c.perOutputMax}`;
+      return `${c.name}${unit} (${cap})`;
+    })
     .join(' · ');
   document.querySelector('output[name="controllers"]').value = ctrlText || '—';
 }

@@ -30,25 +30,25 @@ test('800 pixels: DigUno still fits exactly', () => {
   assert.ok(r.some(c => c.id === 'diguno'));
 });
 
-test('801 pixels: DigUno does not fit, others do', () => {
+test('801 pixels: DigUno needs 2 units (still listed within multi-unit cap)', () => {
   const r = recommendControllers(801);
-  assert.ok(!r.some(c => c.id === 'diguno'));
-  assert.ok(r.some(c => c.id === 'digquad'));
+  const diguno = r.find(c => c.id === 'diguno');
+  assert.ok(diguno);
+  assert.equal(diguno.unitsNeeded, 2);
+  assert.equal(diguno.fits, false);
+  assert.ok(r.some(c => c.id === 'digquad' && c.fits === true));
 });
 
-test('5000 pixels: only DigOcta and PixLites fit', () => {
+test('5000 pixels: PixLites fit with one unit; smaller controllers need multiple', () => {
   const r = recommendControllers(5000);
   const ids = r.map(c => c.id);
-  assert.ok(!ids.includes('diguno'));
-  assert.ok(!ids.includes('digquad'));
-  assert.ok(!ids.includes('pixlite-4'));
-  assert.ok(ids.includes('digocta'));
   assert.ok(ids.includes('pixlite-16'));
+  // Dig-Octa (cap 2000) needs ceil(5000/2000) = 3 → still within maxUnits=3 default
+  const octa = r.find(c => c.id === 'digocta');
+  assert.equal(octa?.unitsNeeded, 3);
 });
 
-test('huge pixel count returns the largest as a splitting hint', () => {
-  const r = recommendControllers(99999);
-  assert.equal(r.length, 1);
-  // none actually fit; we hand back the biggest as "you'll need this and split"
-  assert.ok(r[0].fits === false);
+test('huge pixel count: nothing within 3-unit cap → empty list', () => {
+  const r = recommendControllers(999_999);
+  assert.equal(r.length, 0);
 });
