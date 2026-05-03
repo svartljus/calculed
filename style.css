@@ -258,6 +258,21 @@ label:has(> input:disabled) { color: var(--muted); }
 /* Quantity input — narrow */
 input[name="quantity"] { width: 3.5rem; text-align: right; }
 
+/* Per-strip notes — borderless inline */
+.strip-notes {
+  width: 100%;
+  font: inherit;
+  font-size: var(--fs-small);
+  padding: 0.2rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.strip-notes::placeholder { color: var(--muted); font-style: italic; }
+.strip-notes:focus { outline: none; }
+.strip-notes:not(:placeholder-shown) { color: inherit; }
+.strip-notes:placeholder-shown { color: var(--muted); }
+
 button.info {
   display: inline-flex;
   align-items: center;

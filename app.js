@@ -85,6 +85,7 @@ function makeDefaultStrip() {
     colorMode: 'white',
     dataRunMeters: 0,
     maxDropPercent: 20,
+    notes: '',
   };
 }
 
@@ -115,6 +116,7 @@ function renderStrip(strip) {
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="bothEnds"]').checked = strip.injection === 'bothEnds';
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
+  node.querySelector('input[name="notes"]').value = strip.notes || '';
   const brightnessRadio = node.querySelector(`input[name="brightness-${strip.id}"][value="${strip.brightness}"]`);
   if (brightnessRadio) brightnessRadio.checked = true;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
@@ -189,6 +191,7 @@ function readStripFromCard(card) {
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     injection: card.querySelector('input[name="bothEnds"]').checked ? 'bothEnds' : 'oneEnd',
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
+    notes: card.querySelector('input[name="notes"]').value,
     brightness: Number(card.querySelector('input[name^="brightness-"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
     dataRunMeters: 0,
@@ -496,9 +499,10 @@ function projectAsPrompt() {
     const inj  = computeInjection(s, chip);
     const q = s.quantity || 1;
     const planLabel = s.injection === 'bothEnds' ? 'feed both ends' : 'feed one end';
-    lines.push(`- **${s.name || 'unnamed'}** × ${q}: ${chip.name} (${chip.voltage}V), ${s.density}/m, ${s.length}${s.lengthMode === 'meters' ? ' m' : ' px'}${s.runs === 2 ? ', doubled' : ''}, ${planLabel}, brightness ${Math.round(s.brightness/255*100)}% ${s.colorMode}`);
+    lines.push(`- **Strip × ${q}**: ${chip.name} (${chip.voltage}V), ${s.density}/m, ${s.length}${s.lengthMode === 'meters' ? ' m' : ' px'}${s.runs === 2 ? ', doubled' : ''}, ${planLabel}, brightness ${Math.round(s.brightness/255*100)}% ${s.colorMode}`);
     lines.push(`  - ${draw.pixels} pixels, ${draw.ledCount} LEDs, ${draw.current_A.toFixed(2)} A, ${draw.power_W.toFixed(0)} W per strip`);
     lines.push(`  - drop ${(inj.vDrop_planned_V/chip.voltage*100).toFixed(1)}% (${inj.planned_OK ? 'OK' : 'OVER'}), ${computeFPS(draw.pixels, chip)} FPS`);
+    if (s.notes) lines.push(`  - Notes: ${s.notes}`);
   }
   lines.push('');
   lines.push('## Project totals');
