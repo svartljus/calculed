@@ -15,15 +15,22 @@ const capacityOf = c => Math.min(c.outputs * c.perOutputMax, c.totalMax ?? Infin
 
 // Returns viable controller options, including multi-unit configurations
 // up to `maxUnits` units of the same controller.
-export function recommendControllers(totalPixels, maxUnits = 3) {
+// When `outputsByController` is provided (a fn or map keyed by controller id),
+// the algorithm uses chain-aware output counts instead of treating one strip = one output.
+export function recommendControllers(totalPixels, maxUnits = 3, outputsByController = null) {
   if (totalPixels <= 0) {
     return CONTROLLERS.map(c => ({ ...c, capacity: capacityOf(c), unitsNeeded: 1, fits: true }));
   }
   return CONTROLLERS
     .map(c => {
       const capacity = capacityOf(c);
-      const unitsNeeded = Math.ceil(totalPixels / capacity);
-      return { ...c, capacity, unitsNeeded, fits: unitsNeeded === 1 };
+      const outputs = outputsByController
+        ? (typeof outputsByController === 'function' ? outputsByController(c) : outputsByController[c.id])
+        : null;
+      const unitsByPx = Math.ceil(totalPixels / capacity);
+      const unitsByOuts = outputs ? Math.ceil(outputs / c.outputs) : 1;
+      const unitsNeeded = Math.max(unitsByPx, unitsByOuts);
+      return { ...c, capacity, unitsNeeded, outputsUsed: outputs, fits: unitsNeeded === 1 };
     })
     .filter(c => c.unitsNeeded <= maxUnits);
 }

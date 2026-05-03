@@ -1,7 +1,7 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
-import { recommendSetup } from './src/setup.js';
+import { recommendSetup, outputsForController } from './src/setup.js';
 
 const STORAGE_KEY = 'calculed:project';
 
@@ -234,7 +234,7 @@ function paintTotals() {
   document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
 
-  const setup = recommendSetup(totals, CONTROLLERS, recommendPSUs);
+  const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs);
   const $rec = name => document.querySelector(`output[name="${name}"]`);
 
   if (!setup || totals.totalPixels === 0) {
@@ -243,8 +243,11 @@ function paintTotals() {
     return;
   }
 
+  const usedOuts = setup.brain?.outputsUsed ?? totals.outputCount;
+  const chained = usedOuts < totals.outputCount;
+  const chainSuffix = chained ? ` (chained from ${totals.outputCount} strips)` : '';
   const brainStr = setup.brain
-    ? `${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${totals.outputCount} used`
+    ? `${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${usedOuts} used${chainSuffix}`
     : 'No controller fits — split into multiple projects';
   $rec('recBrain').value = brainStr;
 
@@ -262,8 +265,9 @@ function paintTotals() {
     ? `${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V) = ${psuTotal} W`
     : '—';
 
-  // Alternatives — other viable controllers
-  const alts = recommendControllers(totals.totalPixels)
+  // Alternatives — other viable controllers (chain-aware output count)
+  const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
+  const alts = recommendControllers(totals.totalPixels, 3, outputsByCtrl)
     .filter(c => c.id !== setup.brain?.id)
     .map(c => `${c.name}${c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : ''}`)
     .slice(0, 4)
@@ -329,7 +333,7 @@ document.getElementById('copy-prompt').addEventListener('click', async () => {
 
 function projectAsPrompt() {
   const totals = computeProjectTotals(project.strips, getChip);
-  const setup = recommendSetup(totals, CONTROLLERS, recommendPSUs);
+  const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs);
   const lines = [];
   lines.push(`# WLED install plan: ${project.name || 'untitled'}`);
   lines.push('');
