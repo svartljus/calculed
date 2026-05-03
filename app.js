@@ -54,6 +54,7 @@ function makeDefaultStrip() {
     length: 5,
     runs: 2,
     quantity: 1,
+    injection: 'oneEnd',
     brightness: 255,
     colorMode: 'white',
     dataRunMeters: 0,
@@ -86,6 +87,7 @@ function renderStrip(strip) {
   node.querySelector('input[name="length"]').value = strip.length;
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
+  node.querySelector('input[name="bothEnds"]').checked = strip.injection === 'bothEnds';
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
   const brightnessRadio = node.querySelector(`input[name="brightness-${strip.id}"][value="${strip.brightness}"]`);
   if (brightnessRadio) brightnessRadio.checked = true;
@@ -110,6 +112,7 @@ function readStripFromCard(card) {
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
+    injection: card.querySelector('input[name="bothEnds"]').checked ? 'bothEnds' : 'oneEnd',
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
     brightness: Number(card.querySelector('input[name^="brightness-"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
@@ -145,17 +148,33 @@ function paintCard(card, strip) {
   card.querySelector('[data-info-power]').title =
     Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
-  // Drop — short value inline, full math in tooltip
+  // PSU — per-strip-group (power × quantity ÷ 0.8), rounded up
+  const psuBalanced = actualPower / 0.8;
+  $('psu').value = Number.isFinite(psuBalanced) ? `~${Math.ceil(psuBalanced)}` : '—';
+  const psuMin   = Math.ceil(actualPower);                  // 1.0×
+  const psuSolid = Math.ceil(actualPower / (1 / 1.5));      // 1.5×
+  card.querySelector('[data-info-psu]').title = Number.isFinite(actualPower)
+    ? `Min:      ${psuMin} W (no headroom)\nBalanced: ${Math.ceil(psuBalanced)} W (20% headroom)\nSolid:    ${psuSolid} W (50% headroom)`
+    : '';
+
+  // Drop — show planned drop (oneEnd or bothEnds) with ✓/⚠ indicator
+  const plannedDropPct = (inj.vDrop_planned_V / chip.voltage) * 100;
   const oneFeedDropPct = (inj.vDrop_singleFeed_V / chip.voltage) * 100;
+  const bothEndsDropPct = (inj.vDrop_bothEnds_V / chip.voltage) * 100;
   const tolerancePct = strip.maxDropPercent;
-  $('dropShort').value = Number.isFinite(oneFeedDropPct) ? `${fmt(oneFeedDropPct)}%` : '—';
+  const planLabel = inj.planned === 'bothEnds' ? 'both ends' : 'one end';
+  const indicator = inj.planned_OK ? '✓' : '⚠';
+  $('dropShort').value = Number.isFinite(plannedDropPct) ? `${indicator} ${fmt(plannedDropPct)}%` : '—';
+
   let dropTip;
-  if (!Number.isFinite(oneFeedDropPct)) {
+  if (!Number.isFinite(plannedDropPct)) {
     dropTip = '—';
-  } else if (inj.nFeeds === 1) {
-    dropTip = `${fmt(oneFeedDropPct)}% drop end-to-end with one feed — no injection needed`;
+  } else if (inj.planned_OK) {
+    dropTip = `${fmt(plannedDropPct)}% drop with ${planLabel} feed — within ${tolerancePct}% tolerance ✓`;
   } else {
-    dropTip = `${fmt(oneFeedDropPct)}% drop with one feed.\nFor ≤${tolerancePct}%: ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m.`;
+    const onePct = `${fmt(oneFeedDropPct)}%`;
+    const bothPct = `${fmt(bothEndsDropPct)}%`;
+    dropTip = `${fmt(plannedDropPct)}% drop with ${planLabel} — exceeds ${tolerancePct}% tolerance ⚠\nOne end: ${onePct} · Both ends: ${bothPct}\nFor ≤${tolerancePct}%: ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m`;
   }
   dropTip += eachNote;
   card.querySelector('[data-info-drop]').title = dropTip;
@@ -185,10 +204,8 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
-  document.querySelector('output[name="totalPower"]').value  = fmt(totals.totalPower_W);
-  document.querySelector('output[name="psuRec"]').value      = fmt(totals.psu.balanced, 0);
-  document.querySelector('output[name="psuMin"]').value      = fmt(totals.psu.min, 0);
-  document.querySelector('output[name="psuSolid"]').value    = fmt(totals.psu.solid, 0);
+  document.querySelector('output[name="totalPower"]').value  = Number.isFinite(totals.totalPower_W)
+    ? `~${Math.ceil(totals.totalPower_W)}` : '—';
   document.querySelector('output[name="totalPixels"]').value = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value   = intOrDash(totals.totalLeds);
 
@@ -233,15 +250,6 @@ stripsList.addEventListener('click', (e) => {
     paintTotals();
     scheduleSave();
   }
-});
-
-const resetDialog = document.getElementById('reset-confirm');
-document.getElementById('reset').addEventListener('click', () => resetDialog.showModal());
-resetDialog.addEventListener('close', () => {
-  if (resetDialog.returnValue !== 'confirm') return;
-  clearTimeout(saveTimer);
-  localStorage.removeItem(STORAGE_KEY);
-  location.reload();
 });
 
 document.getElementById('print').addEventListener('click', () => window.print());

@@ -46,3 +46,24 @@ test('count mode: electrical length = pixels / density, independent of runs', ()
   const r = computeInjection({ lengthMode: 'count', length: 144, density: 60, runs: 2, brightness: 255, colorMode: 'white', maxDropPercent: 10 }, chip);
   assert.equal(r.electricalLength_m, 2.4);  // 144 pixels / 60 = 2.4 m per strip
 });
+
+test('both-ends fed: peak drop is ¼ of single-feed value', () => {
+  const chip = getChip('ws2815');
+  const r = computeInjection({ lengthMode: 'meters', length: 10, density: 30, runs: 1, brightness: 255, colorMode: 'white', maxDropPercent: 20, injection: 'bothEnds' }, chip);
+  // 300 LEDs × 17 mA = 5.1 A; R = 0.30 × 10 = 3 Ω
+  // single-feed drop = 5.1 × 3 / 2 = 7.65 V
+  // both-ends drop  = 7.65 / 4 = 1.9125 V
+  assert.ok(Math.abs(r.vDrop_singleFeed_V - 7.65) < 0.01);
+  assert.ok(Math.abs(r.vDrop_bothEnds_V - 1.9125) < 0.01);
+  assert.equal(r.planned, 'bothEnds');
+  // 1.9125 V vs 12 V × 20% = 2.4 V → within budget → planned_OK = true
+  assert.equal(r.planned_OK, true);
+});
+
+test('one-end fed (default): drops over budget when strip is long & high-current', () => {
+  const chip = getChip('ws2815');
+  const r = computeInjection({ lengthMode: 'meters', length: 10, density: 30, runs: 1, brightness: 255, colorMode: 'white', maxDropPercent: 20 }, chip);
+  // single-feed drop = 7.65 V > 2.4 V budget → not OK
+  assert.equal(r.planned, 'oneEnd');
+  assert.equal(r.planned_OK, false);
+});

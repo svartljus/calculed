@@ -66,15 +66,28 @@ export function computeInjection(strip, chip) {
 
   const R_total       = chip.ohm_per_meter * electricalLength_m;
   // Voltage drop is per parallel strip — uses per-strip current, not total.
+  // Single-feed (one end): drop = I × R / 2
+  // Both-ends fed: peak drop is at the middle, ¼ of single-feed value
   const vDrop_singleFeed_V = (perStripCurrent_A * R_total) / 2;
-  const maxDrop_V     = chip.voltage * (strip.maxDropPercent / 100);
+  const vDrop_bothEnds_V   = vDrop_singleFeed_V / 4;
+  const maxDrop_V          = chip.voltage * (strip.maxDropPercent / 100);
 
+  // Recommendation: how many independently-fed segments needed (one-end-fed each)
   const nFeeds = vDrop_singleFeed_V <= maxDrop_V
     ? 1
     : Math.ceil(Math.sqrt(vDrop_singleFeed_V / maxDrop_V));
-
   const injectEvery_m = electricalLength_m / nFeeds;
-  return { nFeeds, injectEvery_m, vDrop_singleFeed_V, maxDrop_V, electricalLength_m, current_A };
+
+  // User's planned injection setup ('oneEnd' default, 'bothEnds' = feed at both ends)
+  const planned = strip.injection || 'oneEnd';
+  const vDrop_planned_V = planned === 'bothEnds' ? vDrop_bothEnds_V : vDrop_singleFeed_V;
+  const planned_OK = vDrop_planned_V <= maxDrop_V;
+
+  return {
+    nFeeds, injectEvery_m, vDrop_singleFeed_V, vDrop_bothEnds_V,
+    vDrop_planned_V, maxDrop_V, planned, planned_OK,
+    electricalLength_m, current_A,
+  };
 }
 
 // AWG ↔ standard European cross-section (mm²) pairing per cable industry datasheets.

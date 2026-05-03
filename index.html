@@ -11,23 +11,14 @@
     <form id="project">
       <ul id="strips"></ul>
       <button type="button" id="add-strip">+ Add strip</button>
-      <button type="button" id="reset">Reset</button>
     </form>
 
     <footer id="totals">
       <div class="totals-row">
-        <div class="hero">
-          <span class="hero-label">Recommended PSU</span>
-          <strong class="hero-value"><output name="psuRec">0</output> W</strong>
-          <span class="hero-sub">
-            <output name="psuMin">0</output> W min ·
-            <output name="psuSolid">0</output> W solid
-          </span>
-        </div>
         <dl>
-          <dt>Power</dt>  <dd><output name="totalPower">0</output> W</dd>
-          <dt>Pixels</dt> <dd><output name="totalPixels">0</output></dd>
-          <dt>LEDs</dt>   <dd><output name="totalLeds">0</output></dd>
+          <dt>Total power</dt> <dd><output name="totalPower">0</output> W</dd>
+          <dt>Pixels</dt>      <dd><output name="totalPixels">0</output></dd>
+          <dt>LEDs</dt>        <dd><output name="totalLeds">0</output></dd>
         </dl>
         <button type="button" id="print">Print BOM</button>
       </div>
@@ -67,6 +58,7 @@
             </select>
           </label>
           <label><input type="checkbox" name="doubled" checked> Doubled</label>
+          <label><input type="checkbox" name="bothEnds"> Both ends</label>
           <div class="field">
             <span class="field-label">Brightness</span>
             <div class="pills" role="radiogroup" aria-label="Max brightness">
@@ -90,6 +82,7 @@
             <div><dt>LEDs</dt>    <dd><output name="ledCount">0</output></dd></div>
             <div><dt>Current</dt> <dd><output name="current">0</output> A</dd></div>
             <div><dt>Power</dt>   <dd><output name="power">0</output> W <button type="button" class="info" data-info-power title="">?</button></dd></div>
+            <div><dt>PSU</dt>     <dd><output name="psu">0</output> W <button type="button" class="info" data-info-psu title="">?</button></dd></div>
             <div><dt>Drop</dt>    <dd><output name="dropShort">—</output> <button type="button" class="info" data-info-drop title="">?</button></dd></div>
             <div><dt>Wire</dt>    <dd><output name="wireShort">—</output> <button type="button" class="info" data-info-wire title="">?</button></dd></div>
             <div><dt>Fuse</dt>    <dd><output name="fuseShort">—</output> A <button type="button" class="info" data-info-fuse title="">?</button></dd></div>
@@ -99,14 +92,6 @@
       </article>
     </li>
   </template>
-
-  <dialog id="reset-confirm">
-    <form method="dialog">
-      <p>Erase all strips and saved data?</p>
-      <button value="cancel">Cancel</button>
-      <button value="confirm">Erase</button>
-    </form>
-  </dialog>
 
   <script type="module" src="app.js"></script>
 </body>
