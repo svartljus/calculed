@@ -1,14 +1,13 @@
 // Per-output pixel limits are practical WLED / firmware-stable limits.
 // `totalMax` (when set) caps the brain's effective total — e.g., Dig-Octa's
 // per-output is high but WLED's total addressable cap is ~2000 LEDs.
-// `priceUSD` is an approximate retail price (Quinled shop, Advatek dealers).
-// Sources verified 2026-05: quinled.info specifications pages, advateklighting.com pixlite-product-comparison.
+// `priceUSD` is an approximate retail price from the Quinled shop.
+// Sources verified 2026-05: quinled.info specifications pages.
+// PixLite Mk3 controllers omitted — Quinled is the price/value sweet spot for this user.
 export const CONTROLLERS = [
-  { id: 'diguno',     name: 'DigUno',           outputs: 2,  perOutputMax: 800,  voltages: [5, 12],     priceUSD: 45  },
-  { id: 'digquad',    name: 'DigQuad',          outputs: 4,  perOutputMax: 800,  voltages: [5, 12, 24], priceUSD: 60  },
-  { id: 'digocta',    name: 'Dig-Octa Brain',   outputs: 8,  perOutputMax: 600,  totalMax: 2000,  voltages: [5, 12, 24], priceUSD: 55  },
-  { id: 'pixlite-4',  name: 'PixLite A4-S Mk3', outputs: 4,  perOutputMax: 1020, totalMax: 4080,  voltages: [5, 12, 24], priceUSD: 200 },
-  { id: 'pixlite-16', name: 'PixLite E16-S Mk3',outputs: 16, perOutputMax: 1020, totalMax: 16320, voltages: [5, 12, 24], priceUSD: 450 },
+  { id: 'diguno',  name: 'DigUno',         outputs: 2, perOutputMax: 800, voltages: [5, 12],     priceUSD: 45 },
+  { id: 'digquad', name: 'DigQuad',        outputs: 4, perOutputMax: 800, voltages: [5, 12, 24], priceUSD: 60 },
+  { id: 'digocta', name: 'Dig-Octa Brain', outputs: 8, perOutputMax: 600, totalMax: 2000, voltages: [5, 12, 24], priceUSD: 55 },
 ];
 
 const capacityOf = c => Math.min(c.outputs * c.perOutputMax, c.totalMax ?? Infinity);

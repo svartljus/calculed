@@ -45,21 +45,11 @@ function tryBrain(c, strips, totalPixels, getChip) {
   return { ...c, units, outputsUsed: outputs, chainsTotal };
 }
 
-// Default: prefer Quinled (cheaper) up to 4 units, then PixLite.
-function pickCheapestBrain(controllers, strips, totalPixels, getChip, maxQuinledUnits = 4) {
-  const quinled = controllers.filter(c => !c.id.startsWith('pixlite'));
-  const pixlite = controllers.filter(c => c.id.startsWith('pixlite'));
-  for (const c of quinled) {
+// Default: pick the smallest controller that fits within `maxUnits` units.
+function pickCheapestBrain(controllers, strips, totalPixels, getChip, maxUnits = 4) {
+  for (const c of controllers) {
     const r = tryBrain(c, strips, totalPixels, getChip);
-    if (r.units <= maxQuinledUnits) return r;
-  }
-  for (const c of pixlite) {
-    const r = tryBrain(c, strips, totalPixels, getChip);
-    if (r.units === 1) return r;
-  }
-  for (const c of pixlite) {
-    const r = tryBrain(c, strips, totalPixels, getChip);
-    if (r.units <= 4) return r;
+    if (r.units <= maxUnits) return r;
   }
   return null;
 }
