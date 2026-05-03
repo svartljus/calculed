@@ -79,11 +79,14 @@ function pickCheapestBrain(controllers, strips, totalPixels, getChip, maxUnits =
   return null;
 }
 
-// "Fewer devices" mode: pick the option with the smallest unit count;
-// tie-break by cheapest total.
+// "Fewer devices" mode: pick the option with the smallest unit count, including
+// premium PixLite controllers as candidates (they're often the only way to fit a
+// large project in 1-2 units). Tie-break by cheapest total.
 function pickFewestUnitsBrain(controllers, strips, totalPixels, getChip) {
+  const ids = new Set(controllers.map(c => c.id));
+  const candidates = [...controllers, ...PIXLITE_CONTROLLERS.filter(c => !ids.has(c.id))];
   let best = null;
-  for (const c of controllers) {
+  for (const c of candidates) {
     const r = tryBrain(c, strips, totalPixels, getChip);
     if (r.units > 4) continue;
     const cost = (r.priceUSD || 0) * r.units;
