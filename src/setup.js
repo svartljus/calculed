@@ -141,6 +141,45 @@ function pickDistribution(brain, totalCurrent_A, voltage, units, forceCentral = 
   return { kind: 'builtin' };
 }
 
+// Assign each physical strip copy to a controller output, chaining same-type
+// strips on a single output up to the brain's per-output pixel cap.
+// Returns an array of brain units, each containing an array of outputs:
+//   [ [ { strips: [{ stripIdx, copy, pixels }], totalPixels, chipName }, ... ] ]
+export function assignOutputs(strips, brain, getChip) {
+  if (!brain) return [];
+  const cap = brain.perOutputMax;
+  const outsPerBrain = brain.outputs;
+  const outputs = [];
+
+  strips.forEach((s, idx) => {
+    const px = computePixels(s);
+    const chip = getChip(s.chipId);
+    if (!Number.isFinite(px) || px <= 0 || !chip) return;
+    const q = s.quantity || 1;
+    let cur = null;
+    for (let copy = 1; copy <= q; copy++) {
+      if (cur && cur.totalPixels + px <= cap) {
+        cur.strips.push({ stripIdx: idx + 1, copy, pixels: px });
+        cur.totalPixels += px;
+      } else {
+        cur = {
+          strips: [{ stripIdx: idx + 1, copy, pixels: px }],
+          totalPixels: px,
+          chipName: chip.name,
+        };
+        outputs.push(cur);
+      }
+    }
+  });
+
+  // Group outputs into brains
+  const result = [];
+  for (let i = 0; i < outputs.length; i += outsPerBrain) {
+    result.push(outputs.slice(i, i + outsPerBrain));
+  }
+  return result;
+}
+
 // Returns a complete project setup recommendation: brain + powerboard + PSU combo.
 // `prefs` controls topology choices:
 //   prefs.minDevices    — pick fewest units (may shift to PixLite over multi-Quinled)

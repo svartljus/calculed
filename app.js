@@ -1,7 +1,7 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost, priceForPSU } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
-import { recommendSetup, outputsForController, recommendPremiumSetup } from './src/setup.js';
+import { recommendSetup, outputsForController, recommendPremiumSetup, assignOutputs } from './src/setup.js';
 import { formatMeanWellCombo } from './src/calc.js';
 
 const STORAGE_KEY = 'calculed:project';
@@ -425,6 +425,29 @@ function paintTotals() {
   $rec('recNote').textContent = totals.mixedVoltage
     ? '⚠ Mixed voltages across strips — recommendation assumes a single supply rail; you may need separate PSU rails per voltage.'
     : '';
+
+  // Output assignment table — chain-aware wiring map
+  const outBody = document.querySelector('#output-table tbody');
+  const brains = setup.brain ? assignOutputs(project.strips, setup.brain, getChip) : [];
+  if (brains.length === 0) {
+    outBody.replaceChildren();
+  } else {
+    const trs = [];
+    brains.forEach((outs, brainIdx) => {
+      outs.forEach((out, outIdx) => {
+        const stripList = out.strips.map(s => `Strip ${s.stripIdx}.${s.copy}`).join(' + ');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${outIdx === 0 ? `${setup.brain.name} #${brainIdx + 1}` : ''}</td>
+          <td>Out ${outIdx + 1}</td>
+          <td>${stripList}${out.strips.length > 1 ? ' (chained)' : ''}</td>
+          <td class="num">${out.totalPixels}</td>
+        `;
+        trs.push(tr);
+      });
+    });
+    outBody.replaceChildren(...trs);
+  }
 }
 
 function syncFromDom() {
