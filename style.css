@@ -15,16 +15,16 @@
   --fs-mini:  0.7rem;
   --fs-small: 0.85rem;
   --fs-base:  14px;
-  --fs-large: var(--s-5);
+  --fs-large: 1.25rem;
 
-  /* Spacing scale (4 px base) */
-  --s-1: var(--s-1);
-  --s-2: var(--s-2);
-  --s-3: var(--s-3);
-  --s-4: var(--s-4);
-  --s-5: var(--s-5);
-  --s-6: var(--s-6);
-  --s-8: var(--s-8);
+  /* Spacing scale (use as needed in new rules) */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.25rem;
+  --s-6: 1.5rem;
+  --s-8: 2rem;
 
   /* Radii */
   --r-sm: 3px;
@@ -43,26 +43,26 @@ input, select, button, textarea, output { font-family: inherit; }
 
 body {
   margin: 0;
-  padding: var(--s-4) clamp(var(--s-4), 3vw, var(--s-8));
-  padding-bottom: var(--s-8);
+  padding: 1rem clamp(1rem, 3vw, 2rem);
+  padding-bottom: 2rem;
 }
 
-main { display: grid; gap: var(--s-3); }
+main { display: grid; gap: 0.75rem; }
 
 #recommendation {
   border: var(--rule);
-  border-radius: var(--r-md);
-  padding: var(--s-4) var(--s-5);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
   background: var(--soft);
-  margin-top: var(--s-4);
+  margin-top: 1rem;
 }
 .rec-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: var(--s-2) var(--s-6);
-  margin-bottom: var(--s-3);
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 0.75rem;
 }
 #recommendation h2 {
   margin: 0;
@@ -72,7 +72,7 @@ main { display: grid; gap: var(--s-3); }
   color: var(--muted);
   font-weight: 600;
 }
-.rec-prefs { display: flex; gap: var(--s-4); font-size: var(--fs-small); }
+.rec-prefs { display: flex; gap: 1rem; font-size: var(--fs-small); }
 .rec-prefs label { display: inline-flex; align-items: center; gap: 0.35rem; }
 
 #bom {
@@ -84,14 +84,14 @@ main { display: grid; gap: var(--s-3); }
   text-align: left;
   font-weight: 600;
   color: var(--muted);
-  padding: 0.4rem var(--s-3) 0.4rem 0;
+  padding: 0.4rem 0.75rem 0.4rem 0;
   border-bottom: var(--rule);
   text-transform: uppercase;
   font-size: var(--fs-mini);
   letter-spacing: 0.05em;
 }
 #bom th.num, #bom td.num { text-align: right; font-variant-numeric: tabular-nums; }
-#bom td { padding: 0.4rem var(--s-3) 0.4rem 0; vertical-align: baseline; }
+#bom td { padding: 0.4rem 0.75rem 0.4rem 0; vertical-align: baseline; }
 #bom tbody td:first-child { font-weight: 600; }
 #bom tbody tr.muted td { color: var(--muted); font-weight: 400; font-style: italic; }
 #bom tfoot td {
@@ -106,29 +106,29 @@ main { display: grid; gap: var(--s-3); }
 #bom tfoot td.num { font-size: 1em; color: inherit; }
 
 .rec-meta {
-  margin: var(--s-3) 0 0 0;
+  margin: 0.75rem 0 0 0;
   display: grid;
   grid-template-columns: max-content 1fr;
-  column-gap: var(--s-4);
-  row-gap: var(--s-1);
+  column-gap: 1rem;
+  row-gap: 0.25rem;
   font-size: var(--fs-small);
 }
 .rec-meta dt { color: var(--muted); }
 .rec-meta dd { margin: 0; }
 
-.rec-note { margin: var(--s-2) 0 0 0; font-size: var(--fs-small); color: var(--muted); }
+.rec-note { margin: 0.5rem 0 0 0; font-size: var(--fs-small); color: var(--muted); }
 .rec-note:empty { display: none; }
 
-.output-map { margin-top: var(--s-3); font-size: var(--fs-small); }
+.output-map { margin-top: 0.75rem; font-size: var(--fs-small); }
 .output-map > summary {
   cursor: pointer;
   color: var(--muted);
-  padding: var(--s-1) 0;
+  padding: 0.25rem 0;
   font-size: var(--fs-mini);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.output-map[open] > summary { margin-bottom: var(--s-2); }
+.output-map[open] > summary { margin-bottom: 0.5rem; }
 #output-table {
   width: 100%;
   border-collapse: collapse;
@@ -143,13 +143,13 @@ main { display: grid; gap: var(--s-3); }
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-#output-table td { padding: var(--s-1) 0.6rem var(--s-1) 0; vertical-align: baseline; }
+#output-table td { padding: 0.25rem 0.6rem 0.25rem 0; vertical-align: baseline; }
 #output-table th.num, #output-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 #output-table tbody tr:not(:last-child) td { border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent); }
 #output-table td:first-child { font-weight: 600; }
 
 
-#project-header { padding: var(--s-1) 0 var(--s-2); }
+#project-header { padding: 0.25rem 0 0.5rem; }
 #project-name {
   font: inherit;
   font-size: var(--fs-large);
@@ -167,8 +167,8 @@ main { display: grid; gap: var(--s-3); }
 .project-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2) var(--s-5);
-  margin-top: var(--s-2);
+  gap: 0.5rem 1.25rem;
+  margin-top: 0.5rem;
   font-size: var(--fs-small);
 }
 .project-meta label { display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -178,7 +178,7 @@ main { display: grid; gap: var(--s-3); }
   font: inherit;
   padding: 0.2rem 0.4rem;
   border: var(--rule);
-  border-radius: var(--r-sm);
+  border-radius: 3px;
   background: transparent;
   color: inherit;
   min-width: 0;
@@ -188,26 +188,26 @@ main { display: grid; gap: var(--s-3); }
 .project-meta select:focus { outline: none; border-color: currentColor; }
 
 
-#strips { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s-3); }
+#strips { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
 
 article {
   border: var(--rule);
   border-left: 3px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-radius: var(--r-md);
-  padding: 0.6rem 0.9rem var(--s-3);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem 0.75rem;
   display: grid;
-  gap: var(--s-2);
-  transition: border-left-color var(--t-base);
+  gap: 0.5rem;
+  transition: border-left-color 0.15s;
 }
-article[data-status="ok"]   { border-left-color: var(--ok); border-left-width: 4px; }
-article[data-status="warn"] { border-left-color: var(--warn); border-left-width: 4px; }
+article[data-status="ok"]   { border-left-color: #16a34a; border-left-width: 4px; }
+article[data-status="warn"] { border-left-color: #d97706; border-left-width: 4px; }
 
 fieldset {
   border: 0;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: var(--s-2) var(--s-5);
+  gap: 0.5rem 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
 }
 
@@ -216,7 +216,7 @@ fieldset.strip-config {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-2) var(--s-5);
+  gap: 0.5rem 1.25rem;
 }
 fieldset.strip-config > label,
 fieldset.strip-config > .field { flex: 0 0 auto; }
@@ -234,19 +234,19 @@ legend {
 }
 
 /* Density pills (hidden radios + clickable label pills) */
-.field { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-small); flex-wrap: wrap; }
+.field { display: flex; align-items: center; gap: 0.5rem; font-size: var(--fs-small); flex-wrap: wrap; }
 .field-label { color: var(--muted); }
 .unit { color: var(--muted); font-size: var(--fs-small); }
 
 .pills {
   display: inline-flex;
   border: var(--rule);
-  border-radius: var(--r-md);
+  border-radius: 4px;
   overflow: hidden;
 }
 .pills label {
   margin: 0;
-  padding: var(--s-1) 0.6rem;
+  padding: 0.25rem 0.6rem;
   cursor: pointer;
   border-right: var(--rule);
   font-variant-numeric: tabular-nums;
@@ -261,7 +261,7 @@ label {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.4rem var(--s-2);
+  gap: 0.4rem 0.5rem;
   font-size: var(--fs-small);
 }
 label > :first-child:not(input):not(select) { color: var(--muted); }
@@ -269,9 +269,9 @@ label > :first-child:not(input):not(select) { color: var(--muted); }
 label input,
 label select {
   font: inherit;
-  padding: var(--s-1) 0.4rem;
+  padding: 0.25rem 0.4rem;
   border: var(--rule);
-  border-radius: var(--r-sm);
+  border-radius: 3px;
   background: transparent;
   color: inherit;
 }
@@ -290,7 +290,7 @@ label:has(> input:disabled) { color: var(--muted); }
 
 [data-results] {
   padding-top: 0.55rem;
-  margin-top: var(--s-1);
+  margin-top: 0.25rem;
   border-top: var(--rule);
   display: grid;
   gap: 0.4rem;
@@ -302,12 +302,12 @@ label:has(> input:disabled) { color: var(--muted); }
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-1) var(--s-5);
+  gap: 0.25rem 1.25rem;
   align-items: baseline;
 }
 [data-results] .stats > div { display: flex; gap: 0.4rem; align-items: baseline; }
 [data-results] .stats dt { color: var(--muted); margin: 0; }
-[data-results] .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; display: flex; align-items: baseline; gap: var(--s-1); }
+[data-results] .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; display: flex; align-items: baseline; gap: 0.25rem; }
 
 /* Quantity input — narrow */
 input[name="quantity"] { width: 3.5rem; text-align: right; }
@@ -345,17 +345,17 @@ button.info {
 button.info:hover { color: inherit; background: var(--soft); }
 
 form#project > button {
-  margin-top: var(--s-1);
-  margin-right: var(--s-1);
+  margin-top: 0.25rem;
+  margin-right: 0.25rem;
 }
 
 /* Summary stats — top of the recommendation block */
 .summary-stats {
-  margin: 0 0 var(--s-4) 0;
+  margin: 0 0 1rem 0;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2) 1.75rem;
-  padding-bottom: var(--s-3);
+  gap: 0.5rem 1.75rem;
+  padding-bottom: 0.75rem;
   border-bottom: var(--rule);
 }
 .summary-stats > div { display: flex; flex-direction: column; gap: 0.1rem; }
@@ -373,28 +373,28 @@ form#project > button {
   font-variant-numeric: tabular-nums;
   display: flex;
   align-items: baseline;
-  gap: var(--s-1);
+  gap: 0.25rem;
 }
 
 /* Action bar at the bottom of the recommendation block */
 .rec-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2);
-  margin-top: var(--s-4);
-  padding-top: var(--s-3);
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
   border-top: var(--rule);
 }
 
 button {
   font: inherit;
-  padding: 0.35rem var(--s-3);
+  padding: 0.35rem 0.75rem;
   border: var(--rule);
-  border-radius: var(--r-sm);
+  border-radius: 3px;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  transition: background var(--t-fast);
+  transition: background 0.1s;
 }
 button:hover:not(:disabled) { background: var(--soft); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -416,28 +416,28 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 dialog {
   border: var(--rule);
-  border-radius: var(--r-md);
-  padding: var(--s-4) var(--s-5);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
   max-width: 24rem;
   background: Canvas;
   color: inherit;
 }
-dialog::backdrop { background: color-mix(in srgb, currentColor 30%, transparent); }
-dialog form { display: grid; gap: var(--s-3); grid-template-columns: 1fr auto auto; align-items: center; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.3); }
+dialog form { display: grid; gap: 0.75rem; grid-template-columns: 1fr auto auto; align-items: center; }
 dialog form p { margin: 0; grid-column: 1 / -1; }
 
-#footnote { margin-top: var(--s-5); font-size: var(--fs-small); }
-#footnote summary { cursor: pointer; color: var(--muted); padding: var(--s-1) 0; }
-#footnote p { margin: var(--s-1) 0 0 var(--s-4); color: var(--muted); }
+#footnote { margin-top: 1.25rem; font-size: var(--fs-small); }
+#footnote summary { cursor: pointer; color: var(--muted); padding: 0.25rem 0; }
+#footnote p { margin: 0.25rem 0 0 1rem; color: var(--muted); }
 
 #references {
-  margin-top: var(--s-6);
-  padding-top: var(--s-4);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
   border-top: var(--rule);
   font-size: var(--fs-small);
 }
 #references h2 {
-  margin: 0 0 var(--s-2) 0;
+  margin: 0 0 0.5rem 0;
   font-size: var(--fs-mini);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -448,7 +448,7 @@ dialog form p { margin: 0; grid-column: 1 / -1; }
   margin: 0;
   display: grid;
   grid-template-columns: 8rem 1fr;
-  column-gap: var(--s-4);
+  column-gap: 1rem;
   row-gap: 0.4rem;
 }
 #references dt { color: var(--muted); }
@@ -468,7 +468,7 @@ dialog form p { margin: 0; grid-column: 1 / -1; }
   :root { color-scheme: light; }
   body { padding: 0; max-width: none; padding-bottom: 0; }
   button, #add-strip, #reset, #print, [data-action="remove"] { display: none !important; }
-  #footnote { display: block; opacity: 1; font-size: var(--fs-small); margin-top: var(--s-4); }
+  #footnote { display: block; opacity: 1; font-size: var(--fs-small); margin-top: 1rem; }
   #totals { position: static; border-top: 2px solid black; backdrop-filter: none; }
   article { break-inside: avoid; box-shadow: none; border: 1px solid black; page-break-inside: avoid; }
   fieldset { border: 0; }
