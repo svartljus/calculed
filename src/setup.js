@@ -45,28 +45,40 @@ function tryBrain(c, strips, totalPixels, getChip) {
   return { ...c, units, outputsUsed: outputs, chainsTotal };
 }
 
-// Prefer Quinled over PixLite — Quinled is significantly cheaper.
-// Allow up to 4 units of Quinled before falling back to PixLite.
-function pickBrain(controllers, strips, totalPixels, getChip, maxQuinledUnits = 4) {
+// Default: prefer Quinled (cheaper) up to 4 units, then PixLite.
+function pickCheapestBrain(controllers, strips, totalPixels, getChip, maxQuinledUnits = 4) {
   const quinled = controllers.filter(c => !c.id.startsWith('pixlite'));
   const pixlite = controllers.filter(c => c.id.startsWith('pixlite'));
-
-  // 1. Smallest Quinled (single OR multi-unit up to maxQuinledUnits)
   for (const c of quinled) {
     const r = tryBrain(c, strips, totalPixels, getChip);
     if (r.units <= maxQuinledUnits) return r;
   }
-  // 2. Fall back to PixLite single-unit
   for (const c of pixlite) {
     const r = tryBrain(c, strips, totalPixels, getChip);
     if (r.units === 1) return r;
   }
-  // 3. PixLite multi-unit (up to 4)
   for (const c of pixlite) {
     const r = tryBrain(c, strips, totalPixels, getChip);
     if (r.units <= 4) return r;
   }
   return null;
+}
+
+// "Fewer devices" mode: pick the option with the smallest unit count;
+// tie-break by cheapest total.
+function pickFewestUnitsBrain(controllers, strips, totalPixels, getChip) {
+  let best = null;
+  for (const c of controllers) {
+    const r = tryBrain(c, strips, totalPixels, getChip);
+    if (r.units > 4) continue;
+    const cost = (r.priceUSD || 0) * r.units;
+    if (!best
+        || r.units < best.units
+        || (r.units === best.units && cost < (best.priceUSD || 0) * best.units)) {
+      best = r;
+    }
+  }
+  return best;
 }
 
 function pickPowerboard(currentNeeded_A, voltage) {
@@ -77,31 +89,34 @@ function pickPowerboard(currentNeeded_A, voltage) {
 
 // Power distribution / fusing layer between PSUs and the controller.
 // Returns one of:
-//   { kind: 'paired',  board, count }   - Dig-Octa Brain ↔ matching Power-x board
-//   { kind: 'central', board, count }   - any high-current setup needs centralized fused dist.
-//   { kind: 'builtin' }                 - small single-brain setup; controller's onboard fusing is enough
-//   { kind: 'split',   note }           - suggest 1 PSU per brain instead of central distribution
-function pickDistribution(brain, totalCurrent_A, voltage, units) {
+//   { kind: 'paired',  board, count }   - Dig-Octa Brain ↔ matching Power-x board (always)
+//   { kind: 'central', board, count }   - centralized PDU between PSUs and brains (multi-brain or forced)
+//   { kind: 'builtin' }                 - controller's onboard fusing is enough; connect PSU directly
+function pickDistribution(brain, totalCurrent_A, voltage, units, forceCentral = false) {
   if (brain?.id === 'digocta') {
     const board = pickPowerboard(totalCurrent_A / units, voltage);
     return { kind: 'paired', board, count: units };
   }
-  // Multi-brain or high-current → suggest centralized distribution
-  if (units > 1 || totalCurrent_A > 30) {
+  if (forceCentral || units > 1) {
     const board = pickPowerboard(totalCurrent_A, voltage);
-    return { kind: 'central', board, count: 1 };
+    return board ? { kind: 'central', board, count: 1 } : { kind: 'builtin' };
   }
   return { kind: 'builtin' };
 }
 
 // Returns a complete project setup recommendation: brain + powerboard + PSU combo.
-// Caller passes both the aggregated totals AND the raw strips array (needed for
-// chain-aware output counting per candidate controller).
-export function recommendSetup(strips, totals, controllers, getChip, recommendPSUs) {
+// `prefs` controls topology choices:
+//   prefs.minDevices    — pick fewest units (may shift to PixLite over multi-Quinled)
+//   prefs.centralPower  — always include a centralized PDU even for single-brain setups
+export function recommendSetup(strips, totals, controllers, getChip, recommendPSUs, prefs = {}) {
   if (!totals.totalPixels || !totals.outputCount) return null;
 
-  const brain = pickBrain(controllers, strips, totals.totalPixels, getChip);
-  const distribution = brain ? pickDistribution(brain, totals.totalCurrent_A, totals.voltage, brain.units) : null;
+  const brain = prefs.minDevices
+    ? pickFewestUnitsBrain(controllers, strips, totals.totalPixels, getChip)
+    : pickCheapestBrain(controllers, strips, totals.totalPixels, getChip);
+  const distribution = brain
+    ? pickDistribution(brain, totals.totalCurrent_A, totals.voltage, brain.units, !!prefs.centralPower)
+    : null;
 
   const psuTarget = totals.totalPower_W / 0.8;
   const psuCombo = recommendPSUs(psuTarget, totals.voltage);

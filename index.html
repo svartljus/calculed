@@ -32,12 +32,23 @@
     </footer>
 
     <section id="recommendation">
-      <h2>Recommended setup</h2>
-      <dl>
-        <dt>Controller</dt>      <dd><output name="recBrain">—</output></dd>
-        <dt>Power board</dt>     <dd><output name="recPower">—</output></dd>
-        <dt>Power supplies</dt>  <dd><output name="recPSUs">—</output></dd>
-        <dt>Estimated cost</dt>  <dd><output name="recCost">—</output></dd>
+      <header class="rec-header">
+        <h2>Recommended setup</h2>
+        <div class="rec-prefs">
+          <label><input type="checkbox" id="pref-min-devices"> Fewer devices</label>
+          <label><input type="checkbox" id="pref-central-power"> Centralize power</label>
+        </div>
+      </header>
+      <table id="bom">
+        <thead>
+          <tr><th>Item</th><th>Notes</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Subtotal</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr><td colspan="4">Total estimated</td><td class="num"><output name="bomTotal">—</output></td></tr>
+        </tfoot>
+      </table>
+      <dl class="rec-meta">
         <dt>Alternatives</dt>    <dd><output name="recAlts">—</output></dd>
       </dl>
       <p class="rec-note"><output name="recNote"></output></p>
@@ -88,7 +99,6 @@
               <option value="average">average</option>
             </select>
           </label>
-          <label class="strip-name"><input type="text" name="name" placeholder="Name (optional)"></label>
           <button type="button" data-action="remove" class="remove-btn" aria-label="Remove strip">×</button>
         </fieldset>
 

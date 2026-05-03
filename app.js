@@ -1,5 +1,5 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
-import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost } from './src/calc.js';
+import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost, priceForPSU } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
 import { recommendSetup, outputsForController } from './src/setup.js';
 
@@ -26,7 +26,11 @@ function loadFromStorage() {
     if (parsed?.version !== 1 || !Array.isArray(parsed.strips)) return null;
     const strips = parsed.strips.map(sanitizeStrip).filter(Boolean);
     if (strips.length === 0) return null;
-    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '' };
+    const prefs = parsed.prefs && typeof parsed.prefs === 'object' ? {
+      minDevices:   !!parsed.prefs.minDevices,
+      centralPower: !!parsed.prefs.centralPower,
+    } : { minDevices: false, centralPower: false };
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs };
   } catch {
     return null;
   }
@@ -83,7 +87,6 @@ function renderStrip(strip) {
   }
 
   // Set form values from the strip object
-  node.querySelector('input[name="name"]').value = strip.name || '';
   const densityRadio = node.querySelector(`input[name="density-${strip.id}"][value="${strip.density}"]`);
   if (densityRadio) densityRadio.checked = true;
   node.querySelector('input[name="length"]').value = strip.length;
@@ -99,7 +102,8 @@ function renderStrip(strip) {
 }
 
 const stored = loadFromStorage();
-const project = stored ?? { version: 1, name: '', strips: [makeDefaultStrip()] };
+const project = stored ?? { version: 1, name: '', prefs: { minDevices: false, centralPower: false }, strips: [makeDefaultStrip()] };
+if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
 
 const projectNameInput = document.getElementById('project-name');
 projectNameInput.value = project.name || '';
@@ -108,6 +112,19 @@ projectNameInput.addEventListener('input', () => {
   scheduleSave();
 });
 
+const prefMinDevices   = document.getElementById('pref-min-devices');
+const prefCentralPower = document.getElementById('pref-central-power');
+prefMinDevices.checked   = !!project.prefs.minDevices;
+prefCentralPower.checked = !!project.prefs.centralPower;
+const onPrefChange = () => {
+  project.prefs.minDevices   = prefMinDevices.checked;
+  project.prefs.centralPower = prefCentralPower.checked;
+  paintTotals();
+  scheduleSave();
+};
+prefMinDevices.addEventListener('change', onPrefChange);
+prefCentralPower.addEventListener('change', onPrefChange);
+
 function render() {
   stripsList.replaceChildren(...project.strips.map(renderStrip));
 }
@@ -115,7 +132,7 @@ function render() {
 function readStripFromCard(card) {
   return {
     id: card.dataset.id,
-    name: card.querySelector('input[name="name"]').value,
+    name: '',
     chipId: card.querySelector('select[name="chipId"]').value,
     density: Number(card.querySelector('input[name^="density-"]:checked')?.value ?? 96),
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
@@ -160,13 +177,13 @@ function paintCard(card, strip) {
     Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
   // FPS — per single output (one strip's pixel count)
+  // Quinled-recommended target: 42 FPS. Below 30 = visible flicker, below 20 = severe.
   const fps = computeFPS(draw.pixels, chip);
-  const fpsOK = fps >= 30;
-  const fpsLow = fps < 20;
-  const fpsIndicator = fpsOK ? '' : (fpsLow ? '⚠ ' : '');
-  $('fps').value = Number.isFinite(fps) ? `${fpsIndicator}${fps}` : '∞';
+  const fpsBelowGoal = fps < 42;
+  const fpsLow = fps < 30;
+  $('fps').value = Number.isFinite(fps) ? `${fpsBelowGoal ? '⚠ ' : ''}${fps}` : '∞';
   card.querySelector('[data-info-fps]').title = Number.isFinite(fps)
-    ? `${fps} FPS at ${draw.pixels} pixels per output (~${chip.protocol.startsWith('2-wire') ? 4 : 30} µs/pixel)\nWLED's bus refresh is per-pixel; flicker becomes visible below ~30 FPS, severe below 20.`
+    ? `${fps} FPS at ${draw.pixels} pixels per output (~${chip.protocol.startsWith('2-wire') ? 4 : 30} µs/pixel)\nQuinled-recommended target: 42 FPS. Flicker becomes visible below ~30 FPS, severe below 20.`
     : `${chip.protocol} — effectively no FPS limit at typical pixel counts`;
 
   // PSU — snap to chip-voltage-appropriate standard sizes
@@ -228,8 +245,9 @@ function paintCard(card, strip) {
   $('dataShort').value = shortLabel;
   card.querySelector('[data-info]').title = dataTip;
 
-  // Overall strip status — green if planned drop is within tolerance and wire isn't over capacity.
-  card.dataset.status = inj.planned_OK && !awg.balanced.overCapacity ? 'ok' : 'warn';
+  // Overall strip status — green if planned drop is within tolerance, wire isn't
+  // over capacity, AND FPS isn't critically low.
+  card.dataset.status = inj.planned_OK && !awg.balanced.overCapacity && !fpsLow ? 'ok' : 'warn';
 }
 
 function paintTotals() {
@@ -240,62 +258,120 @@ function paintTotals() {
   document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
 
-  const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs);
+  const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs, project.prefs);
   const $rec = name => document.querySelector(`output[name="${name}"]`);
+  const bomBody = document.querySelector('#bom tbody');
 
   if (!setup || totals.totalPixels === 0) {
-    $rec('recBrain').value = $rec('recPower').value = $rec('recPSUs').value = $rec('recAlts').value = '—';
+    bomBody.replaceChildren();
+    $rec('bomTotal').value = '—';
+    $rec('recAlts').value = '—';
     $rec('recNote').textContent = totals.totalPixels === 0 ? 'Add at least one strip.' : '';
     return;
   }
 
-  const usedOuts = setup.brain?.outputsUsed ?? totals.outputCount;
-  const chained = usedOuts < totals.outputCount;
-  const chainSuffix = chained ? ` (chained from ${totals.outputCount} strips)` : '';
-  const brainStr = setup.brain
-    ? `${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${usedOuts} used${chainSuffix}`
-    : 'No controller fits — split into multiple projects';
-  $rec('recBrain').value = brainStr;
+  // Build BOM rows
+  const rows = [];
+  const fmtUSD = n => Number.isFinite(n) ? `$${Math.round(n)}` : '—';
 
-  const dist = setup.distribution;
-  if (!dist) {
-    $rec('recPower').value = '—';
-  } else if (dist.kind === 'paired' && dist.board) {
-    const overCap = dist.board.amps < (totals.totalCurrent_A / (setup.brain.units || 1));
-    $rec('recPower').value = `${dist.board.name} × ${dist.count} — paired with brain (${dist.board.amps} A, ${dist.board.ports} fused ports)${overCap ? ' ⚠ over capacity' : ''}`;
-  } else if (dist.kind === 'central' && dist.board) {
-    $rec('recPower').value = `${dist.board.name} standalone (${dist.board.amps} A, ${dist.board.ports} fused ports) — or 1 PSU per brain`;
-  } else {
-    $rec('recPower').value = 'Built into controller — connect PSU directly';
+  // Controller
+  if (setup.brain) {
+    const usedOuts = setup.brain.outputsUsed ?? totals.outputCount;
+    const chained = usedOuts < totals.outputCount;
+    const chainNote = chained ? ` (chained from ${totals.outputCount} strips)` : '';
+    rows.push({
+      item: setup.brain.name,
+      notes: `${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}`,
+      qty: setup.brain.units,
+      unit: setup.brain.priceUSD,
+      subtotal: setup.brain.priceUSD * setup.brain.units,
+    });
   }
 
-  const psuTotal = setup.psuCombo.reduce((sum, p) => sum + p.size * p.count, 0);
+  // Power board / distribution
+  const dist = setup.distribution;
+  if (dist?.kind === 'paired' && dist.board) {
+    rows.push({
+      item: dist.board.name,
+      notes: `paired with brain — ${dist.board.amps} A, ${dist.board.ports} fused ports`,
+      qty: dist.count,
+      unit: dist.board.priceUSD,
+      subtotal: dist.board.priceUSD * dist.count,
+    });
+  } else if (dist?.kind === 'central' && dist.board) {
+    rows.push({
+      item: `${dist.board.name} (standalone PDU)`,
+      notes: `${dist.board.amps} A, ${dist.board.ports} fused ports`,
+      qty: 1,
+      unit: dist.board.priceUSD,
+      subtotal: dist.board.priceUSD,
+    });
+  }
+
+  // PSUs — one row per size
+  for (const { size, count } of setup.psuCombo) {
+    const unit = priceForPSU(size, setup.voltage);
+    rows.push({
+      item: `${size} W ${setup.voltage}V PSU`,
+      notes: setup.voltage <= 24 ? 'Kingneonlux IP67 (waterproof)' : '',
+      qty: count,
+      unit,
+      subtotal: unit != null ? unit * count : null,
+    });
+  }
+
+  // Optional split-PSU alternative note when bothEnds is in use
   const anyBothEnds = project.strips.some(s => s.injection === 'bothEnds');
-  let psuLine = setup.psuCombo.length
-    ? `${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V) = ${psuTotal} W`
-    : '—';
   if (anyBothEnds && setup.psuCombo.length) {
     const halfCombo = recommendPSUs(setup.psuTarget / 2, setup.voltage);
-    psuLine += ` — or split as 2 × ${formatPSUCombo(halfCombo)} at each injection end (no long heavy wiring)`;
+    rows.push({
+      item: '— or split for both-ends injection —',
+      notes: `${formatPSUCombo(halfCombo)} at each injection end (no long heavy wiring)`,
+      qty: '',
+      unit: '',
+      subtotal: '',
+      muted: true,
+    });
   }
-  $rec('recPSUs').value = psuLine;
 
-  // Estimated cost — controllers + powerboards + PSUs
-  const psuCost = totalPSUCost(setup.psuCombo, setup.voltage);
-  const totalCost = (setup.cost?.controllerSubtotal ?? 0) + psuCost.total;
-  if (totalCost > 0) {
-    const note = psuCost.unknown ? ' + PSUs at this voltage' : '';
-    $rec('recCost').value = `~$${totalCost.toFixed(0)} (controller + power board + PSUs${note}, list prices, before shipping)`;
-  } else {
-    $rec('recCost').value = '—';
+  // Fuses count (project-wide) — one per feed
+  const totalFeeds = project.strips.reduce((sum, s) => {
+    const feedsPerStrip = s.injection === 'bothEnds' ? 2 : 1;
+    return sum + (s.quantity || 1) * feedsPerStrip;
+  }, 0);
+  if (totalFeeds > 0) {
+    rows.push({
+      item: 'Inline glass fuses',
+      notes: 'one per power-feed wire',
+      qty: totalFeeds,
+      unit: null,
+      subtotal: null,
+    });
   }
+
+  // Render rows
+  bomBody.replaceChildren(...rows.map(r => {
+    const tr = document.createElement('tr');
+    if (r.muted) tr.classList.add('muted');
+    tr.innerHTML = `
+      <td>${r.item}</td>
+      <td>${r.notes || ''}</td>
+      <td class="num">${r.qty === '' ? '' : r.qty}</td>
+      <td class="num">${r.unit === '' ? '' : (r.unit != null ? fmtUSD(r.unit) : '—')}</td>
+      <td class="num">${r.subtotal === '' ? '' : (r.subtotal != null ? fmtUSD(r.subtotal) : '—')}</td>
+    `;
+    return tr;
+  }));
+
+  const grandTotal = rows.reduce((sum, r) => sum + (typeof r.subtotal === 'number' ? r.subtotal : 0), 0);
+  $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';
 
   // Alternatives — other viable controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
-  const alts = recommendControllers(totals.totalPixels, 3, outputsByCtrl)
+  const alts = recommendControllers(totals.totalPixels, 4, outputsByCtrl)
     .filter(c => c.id !== setup.brain?.id)
     .map(c => `${c.name}${c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : ''}`)
-    .slice(0, 4)
+    .slice(0, 5)
     .join(' · ');
   $rec('recAlts').value = alts || 'none';
 
