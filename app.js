@@ -564,12 +564,6 @@ function paintTotals() {
   }, 0);
   $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';
 
-  // Cost per pixel — quick comparability metric across projects
-  const cpp = totals.totalPixels > 0 && grandTotal > 0
-    ? grandTotal / totals.totalPixels
-    : null;
-  document.querySelector('output[name="costPerPixel"]').value =
-    cpp != null ? formatPrice(cpp, project.currency, 2) : '—';
 
   // Alternatives — other viable Quinled controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
@@ -754,7 +748,7 @@ function projectAsCSV() {
 
   // Strips
   out += '# Strips\n';
-  out += csvRow('Idx', 'Chip', 'Voltage', 'Density', 'Length', 'Unit', 'Doubled', 'BothEnds', 'Brightness', 'Color', 'Qty', 'Pixels/strip', 'LEDs/strip', 'Current/strip (A)', 'Power/strip (W)', 'FPS', 'Drop %', 'OK', 'Notes');
+  out += csvRow('Idx', 'Chip', 'Voltage', 'Density', 'Length', 'Unit', 'Doubled', 'BothEnds', 'Brightness', 'Colour', 'Qty', 'Pixels/strip', 'LEDs/strip', 'Current/strip (A)', 'Power/strip (W)', 'FPS', 'Drop %', 'OK', 'Notes');
   project.strips.forEach((s, i) => {
     const chip = getChip(s.chipId);
     if (!chip) return;
@@ -880,14 +874,15 @@ function projectAsPrompt() {
   lines.push(`- ${totals.totalPixels} pixels · ${totals.totalLeds} LEDs · ${totals.totalCurrent_A.toFixed(1)} A · ${Math.ceil(totals.totalPower_W)} W`);
   lines.push(`- ${totals.outputCount} outputs needed · ${totals.voltage}V${totals.mixedVoltage ? ' (mixed!)' : ''}`);
   lines.push('');
-  // Per-card hardware aggregation + strip costs (same model as the BOM display)
-  lines.push('## Calculator recommendation (BOM)');
+  // Per-card hardware + strip + wire aggregation (mirrors the BOM display).
+  lines.push('## BOM (what to buy)');
   const agg = new Map();
-  const add = (key, label, qty, unit, qtyUnit) => {
+  const add = (key, label, qty, unit, qtyUnit, category) => {
     const ex = agg.get(key);
-    if (ex) { ex.qty += qty; ex.subtotal += (unit || 0) * qty; }
-    else agg.set(key, { label, qty, unit, subtotal: (unit || 0) * qty, qtyUnit });
+    if (ex) ex.qty += qty;
+    else agg.set(key, { key, category, label, qty, unit, qtyUnit });
   };
+
   for (const s of project.strips) {
     const chip = getChip(s.chipId);
     if (!chip) continue;
@@ -896,30 +891,57 @@ function projectAsPrompt() {
     if (stripPrice != null) {
       const visibleM = s.lengthMode === 'meters' ? s.length : s.length / s.density;
       const physicalM = visibleM * (s.runs || 1);
-      const totalM = physicalM * (s.quantity || 1) * iter;
-      add(`strip-${chip.id}-${s.density}`, `${chip.name} strip ${s.density}/m`, totalM, stripPrice, 'm');
+      add(`strip-${chip.id}-${s.density}`,
+          `${chip.name} strip ${s.density}/m`,
+          physicalM * (s.quantity || 1) * iter, stripPrice, 'm', 'strips');
     }
     const cardSetup = recommendSetup([{ ...s, iterations: 1 }], computeProjectTotals([{ ...s, iterations: 1 }], getChip), CONTROLLERS, getChip, recommendPSUs, project.prefs);
     if (!cardSetup) continue;
-    if (cardSetup.brain) add(`brain-${cardSetup.brain.id}`, cardSetup.brain.name, cardSetup.brain.units * iter, cardSetup.brain.priceUSD);
+    if (cardSetup.brain) {
+      add(`brain-${cardSetup.brain.id}`, cardSetup.brain.name, cardSetup.brain.units * iter, cardSetup.brain.priceUSD, undefined, 'controllers');
+    }
     const dist = cardSetup.distribution;
-    if (dist?.kind === 'paired' && dist.board) add(`pb-${dist.board.id}`, dist.board.name, dist.count * iter, dist.board.priceUSD);
-    else if (dist?.kind === 'central' && dist.board) add(`pb-${dist.board.id}-pdu`, `${dist.board.name} (PDU)`, 1 * iter, dist.board.priceUSD);
-    else if (dist?.kind === 'busbar') add('busbar', 'DC distribution block', dist.count * iter, 10);
+    if (dist?.kind === 'paired' && dist.board) add(`pb-${dist.board.id}`, dist.board.name, dist.count * iter, dist.board.priceUSD, undefined, 'power');
+    else if (dist?.kind === 'central' && dist.board) add(`pb-${dist.board.id}-pdu`, `${dist.board.name} (PDU)`, 1 * iter, dist.board.priceUSD, undefined, 'power');
+    else if (dist?.kind === 'busbar') add('busbar', 'DC distribution block', dist.count * iter, 10, undefined, 'power');
     for (const { size, count } of cardSetup.psuCombo) {
-      add(`psu-${cardSetup.voltage}-${size}`, `${size} W ${cardSetup.voltage}V PSU`, count * iter, priceForPSU(size, cardSetup.voltage));
+      add(`psu-${cardSetup.voltage}-${size}`, `${size} W ${cardSetup.voltage}V PSU`, count * iter, priceForPSU(size, cardSetup.voltage), undefined, 'psus');
+    }
+    if (s.feedRunMeters > 0) {
+      const inj = computeInjection(s, chip);
+      const feedsPerStrip = s.injection === 'bothEnds' ? 2 : 1;
+      const totalWire_m = s.feedRunMeters * feedsPerStrip * (s.quantity || 1) * iter;
+      const feedCurrent = inj.current_A / feedsPerStrip;
+      const awg = recommendAWG(feedCurrent);
+      add(`wire-${awg.balanced.awg}`, `${awg.balanced.awg} AWG / ${awg.balanced.mm2} mm² wire`, totalWire_m, null, 'm', 'wiring');
     }
   }
+
+  // Apply in-stock subtraction; group by category in the same order as the BOM
+  const CAT_ORDER = ['strips', 'controllers', 'power', 'psus', 'wiring'];
+  const CAT_LABEL = { strips: 'LED strips', controllers: 'Controllers', power: 'Power distribution', psus: 'Power supplies', wiring: 'Wiring' };
+  const sortedItems = [...agg.values()].sort((a, b) => CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category));
   let grandTotal = 0;
-  for (const { label, qty, unit, subtotal, qtyUnit } of agg.values()) {
-    const qtyStr = qtyUnit === 'm' ? `${Math.round(qty)} m` : `${qty}`;
-    const unitStr = unit != null ? `${formatPrice(unit, project.currency)}${qtyUnit ? `/${qtyUnit}` : ''}` : '—';
+  let lastCat = null;
+  for (const it of sortedItems) {
+    if (it.category !== lastCat) {
+      lines.push(`### ${CAT_LABEL[it.category] || it.category}`);
+      lastCat = it.category;
+    }
+    const need = Math.ceil(it.qty);
+    const stock = Math.max(0, Math.ceil(project.stock?.[it.key] || 0));
+    const buy = Math.max(0, need - stock);
+    const subtotal = it.unit != null ? it.unit * buy : null;
+    const qtyUnit = it.qtyUnit === 'm' ? ' m' : '';
+    const unitStr = it.unit != null ? `${formatPrice(it.unit, project.currency)}${it.qtyUnit ? `/${it.qtyUnit}` : ''}` : '—';
     const subStr = subtotal != null ? formatPrice(subtotal, project.currency) : '—';
-    lines.push(`- ${label} — qty ${qtyStr}, unit ${unitStr}, subtotal ${subStr}`);
-    grandTotal += subtotal || 0;
+    const stockNote = stock > 0 ? ` (have ${stock}${qtyUnit} in stock)` : '';
+    lines.push(`- **${it.label}** — need ${need}${qtyUnit}${stockNote}, buy ${buy}${qtyUnit} @ ${unitStr} = ${subStr}`);
+    if (subtotal != null) grandTotal += subtotal;
   }
-  if (grandTotal > 0) lines.push(`- **Estimated total: ${formatPrice(grandTotal, project.currency)}** (list, ex. shipping)`);
+  if (grandTotal > 0) lines.push('', `**Estimated total to buy: ${formatPrice(grandTotal, project.currency)}** (list prices, ex. shipping)`);
+
   lines.push('');
-  lines.push('Please sanity-check this setup and suggest any optimisations or things I might be missing.');
+  lines.push('Please sanity-check this setup against best WLED / Quinled practice and call out anything I might be missing or could optimise.');
   return lines.join('\n');
 }
