@@ -52,6 +52,18 @@ fieldset {
   gap: 0.5rem 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
 }
+
+/* Strip config — inline flow, content-sized */
+fieldset.strip-config {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+fieldset.strip-config > label,
+fieldset.strip-config > .field { flex: 0 0 auto; }
+fieldset.strip-config select { flex: 0 0 auto; min-width: 0; width: auto; }
+
 legend {
   grid-column: 1 / -1;
   padding: 0;
