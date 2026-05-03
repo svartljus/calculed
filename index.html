@@ -8,6 +8,9 @@
 </head>
 <body>
   <main>
+    <header id="project-header">
+      <input id="project-name" placeholder="Project name">
+    </header>
     <form id="project">
       <ul id="strips"></ul>
       <button type="button" id="add-strip">+ Add strip</button>
@@ -73,6 +76,7 @@
               <option value="average">average</option>
             </select>
           </label>
+          <label class="strip-name"><input type="text" name="name" placeholder="Name (optional)"></label>
           <button type="button" data-action="remove" class="remove-btn" aria-label="Remove strip">×</button>
         </fieldset>
 
@@ -82,6 +86,7 @@
             <div><dt>LEDs</dt>    <dd><output name="ledCount">0</output></dd></div>
             <div><dt>Current</dt> <dd><output name="current">0</output> A</dd></div>
             <div><dt>Power</dt>   <dd><output name="power">0</output> W <button type="button" class="info" data-info-power title="">?</button></dd></div>
+            <div><dt>FPS</dt>     <dd><output name="fps">—</output> <button type="button" class="info" data-info-fps title="">?</button></dd></div>
             <div><dt>PSU</dt>     <dd><output name="psu">0</output> W <button type="button" class="info" data-info-psu title="">?</button></dd></div>
             <div><dt>Drop</dt>    <dd><output name="dropShort">—</output> <button type="button" class="info" data-info-drop title="">?</button></dd></div>
             <div><dt>Wire</dt>    <dd><output name="wireShort">—</output> <button type="button" class="info" data-info-wire title="">?</button></dd></div>

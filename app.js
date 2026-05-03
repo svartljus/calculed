@@ -1,5 +1,5 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
-import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts } from './src/calc.js';
+import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS } from './src/calc.js';
 import { recommendControllers } from './src/controllers.js';
 
 const STORAGE_KEY = 'calculed:project';
@@ -25,7 +25,7 @@ function loadFromStorage() {
     if (parsed?.version !== 1 || !Array.isArray(parsed.strips)) return null;
     const strips = parsed.strips.map(sanitizeStrip).filter(Boolean);
     if (strips.length === 0) return null;
-    return { version: 1, strips };
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '' };
   } catch {
     return null;
   }
@@ -82,6 +82,7 @@ function renderStrip(strip) {
   }
 
   // Set form values from the strip object
+  node.querySelector('input[name="name"]').value = strip.name || '';
   const densityRadio = node.querySelector(`input[name="density-${strip.id}"][value="${strip.density}"]`);
   if (densityRadio) densityRadio.checked = true;
   node.querySelector('input[name="length"]').value = strip.length;
@@ -97,7 +98,14 @@ function renderStrip(strip) {
 }
 
 const stored = loadFromStorage();
-const project = stored ?? { version: 1, strips: [makeDefaultStrip()] };
+const project = stored ?? { version: 1, name: '', strips: [makeDefaultStrip()] };
+
+const projectNameInput = document.getElementById('project-name');
+projectNameInput.value = project.name || '';
+projectNameInput.addEventListener('input', () => {
+  project.name = projectNameInput.value;
+  scheduleSave();
+});
 
 function render() {
   stripsList.replaceChildren(...project.strips.map(renderStrip));
@@ -106,7 +114,7 @@ function render() {
 function readStripFromCard(card) {
   return {
     id: card.dataset.id,
-    name: '',
+    name: card.querySelector('input[name="name"]').value,
     chipId: card.querySelector('select[name="chipId"]').value,
     density: Number(card.querySelector('input[name^="density-"]:checked')?.value ?? 96),
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
@@ -150,13 +158,23 @@ function paintCard(card, strip) {
   card.querySelector('[data-info-power]').title =
     Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
-  // PSU — snap to standard 12V sizes (120/200/300/400/600 W)
+  // FPS — per single output (one strip's pixel count)
+  const fps = computeFPS(draw.pixels, chip);
+  const fpsOK = fps >= 30;
+  const fpsLow = fps < 20;
+  const fpsIndicator = fpsOK ? '' : (fpsLow ? '⚠ ' : '');
+  $('fps').value = Number.isFinite(fps) ? `${fpsIndicator}${fps}` : '∞';
+  card.querySelector('[data-info-fps]').title = Number.isFinite(fps)
+    ? `${fps} FPS at ${draw.pixels} pixels per output (~${chip.protocol.startsWith('2-wire') ? 4 : 30} µs/pixel)\nWLED's bus refresh is per-pixel; flicker becomes visible below ~30 FPS, severe below 20.`
+    : `${chip.protocol} — effectively no FPS limit at typical pixel counts`;
+
+  // PSU — snap to chip-voltage-appropriate standard sizes
   const psuTarget = actualPower / 0.8;     // 25% headroom (balanced)
-  const combo = recommendPSUs(psuTarget);
+  const combo = recommendPSUs(psuTarget, chip.voltage);
   $('psu').value = combo.length ? formatPSUCombo(combo).replace(/ W$/, '') : '—';
   const totalCombo = totalPSUWatts(combo);
   card.querySelector('[data-info-psu]').title = Number.isFinite(actualPower) && combo.length
-    ? `Power draw: ${fmt(actualPower, 1)} W\nTarget (25% headroom): ${Math.ceil(psuTarget)} W\nBuy: ${formatPSUCombo(combo)} = ${totalCombo} W`
+    ? `Power draw: ${fmt(actualPower, 1)} W\nTarget (25% headroom): ${Math.ceil(psuTarget)} W\nBuy: ${formatPSUCombo(combo)} = ${totalCombo} W (at ${chip.voltage}V)`
     : '';
 
   // Drop — show planned drop (oneEnd or bothEnds) with ✓/⚠ indicator

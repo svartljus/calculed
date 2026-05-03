@@ -119,20 +119,22 @@ export function recommendAWG(currentA) {
   };
 }
 
-// Common off-the-shelf 12V/24V PSU wattages, ascending. 600 W is the practical
-// per-supply max at 12V — bigger projects use multiples.
-const PSU_SIZES_W = [120, 200, 300, 400, 600];
+// Off-the-shelf PSU wattages by voltage. 5V high-current is exotic; 12V is the workhorse.
+const PSU_SIZES_BY_VOLTAGE = {
+  5:  [60, 100, 150, 200, 350],
+  12: [120, 200, 300, 400, 600],
+  24: [120, 240, 350, 480, 600],
+};
 
 // Greedy pack: as many of the largest as fit, then a single smaller PSU to
 // cover the remainder. Returns [{ size, count }, ...] in descending order.
-export function recommendPSUs(targetW, sizes = PSU_SIZES_W) {
+export function recommendPSUs(targetW, voltage = 12) {
   if (!Number.isFinite(targetW) || targetW <= 0) return [];
+  const sizes = PSU_SIZES_BY_VOLTAGE[voltage] || PSU_SIZES_BY_VOLTAGE[12];
   const desc = [...sizes].sort((a, b) => b - a);
   const max = desc[0];
-  // Single PSU fits
   const single = desc.findLast ? desc.findLast(s => s >= targetW) : sizes.find(s => s >= targetW);
   if (single) return [{ size: single, count: 1 }];
-  // Pack with full max-size PSUs, then top up with one smaller
   const bigCount = Math.floor(targetW / max);
   const remainder = targetW - bigCount * max;
   const out = [{ size: max, count: bigCount }];
@@ -142,6 +144,16 @@ export function recommendPSUs(targetW, sizes = PSU_SIZES_W) {
     else out.push({ size: topUp, count: 1 });
   }
   return out;
+}
+
+// FPS at the WLED bus refresh rate.
+// 1-wire (WS281x, SK6812): ~30 µs per pixel.
+// 2-wire SPI (APA102): much faster, hardware-clocked; effectively no FPS ceiling at typical pixel counts.
+// Returns frames-per-second for `pixels` LEDs on a single output.
+export function computeFPS(pixels, chip) {
+  if (!Number.isFinite(pixels) || pixels <= 0) return Infinity;
+  const usPerPixel = chip.protocol.startsWith('2-wire') ? 4 : 30;
+  return Math.floor(1_000_000 / (pixels * usPerPixel));
 }
 
 export function formatPSUCombo(combo) {
