@@ -310,6 +310,23 @@ function paintTotals() {
   document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
 
+  // AC draw at the wall: account for ~88% PSU efficiency at 230V single-phase.
+  const PSU_EFF = 0.88;
+  const acDraw_W = totals.totalPower_W / PSU_EFF;
+  const acDraw_A = acDraw_W / 230;
+  let acIndicator = '';
+  if (acDraw_A > 12) acIndicator = '⚠ ';
+  document.querySelector('output[name="acDraw"]').value =
+    Number.isFinite(acDraw_A) ? `${acIndicator}${fmt(acDraw_A)}` : '—';
+  document.querySelector('[data-info-ac]').title = Number.isFinite(acDraw_A) ? [
+    `~${Math.ceil(acDraw_W)} W from the wall (${Math.round(PSU_EFF * 100)}% PSU efficiency)`,
+    `${fmt(acDraw_A)} A @ 230V single-phase`,
+    acDraw_A > 24 ? '⚠ exceeds 16A circuit — split across two circuits or use 32A' :
+      acDraw_A > 12 ? '⚠ near 16A circuit limit — comfortable on a 16A circuit; split if uncertain' :
+      acDraw_A > 7  ? 'Fits a 10A circuit with margin' :
+      'Comfortably fits any standard circuit',
+  ].join('\n') : '';
+
   const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs, project.prefs);
   const $rec = name => document.querySelector(`output[name="${name}"]`);
   const bomBody = document.querySelector('#bom tbody');
