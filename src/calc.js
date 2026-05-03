@@ -6,9 +6,10 @@ export function effectiveMaPerLed(baseMa, brightness, colorMode) {
 }
 
 // Pixels = addressable units (what WLED sees). Independent of doubled mode.
+// Rounded to integer — fractional LEDs make no physical sense.
 export function computePixels(strip) {
-  if (strip.lengthMode === 'count') return strip.length;
-  return strip.density * strip.length;
+  if (strip.lengthMode === 'count') return Math.round(strip.length);
+  return Math.round(strip.density * strip.length);
 }
 
 // LED count = physical LEDs. Doubled mode (runs=2) doubles the count
