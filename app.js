@@ -717,6 +717,26 @@ document.getElementById('export-csv').addEventListener('click', () => {
   downloadFile(filename, projectAsCSV(), 'text/csv');
 });
 
+document.getElementById('import-json-btn').addEventListener('click', () => {
+  document.getElementById('import-json').click();
+});
+document.getElementById('import-json').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (parsed?.version !== 1 || !Array.isArray(parsed.strips)) {
+      throw new Error('Not a valid CalcuLED project file (missing version or strips).');
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    location.reload();
+  } catch (err) {
+    alert(`Could not load JSON: ${err.message}`);
+    e.target.value = '';
+  }
+});
+
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
