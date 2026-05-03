@@ -76,19 +76,21 @@ export function computeInjection(strip, chip) {
   return { nFeeds, injectEvery_m, vDrop_singleFeed_V, maxDrop_V, electricalLength_m, current_A };
 }
 
+// AWG ↔ standard European cross-section (mm²) pairing per cable industry datasheets.
 const AWG_TABLE = [
-  { awg: 18, ampacity: 7 },
-  { awg: 16, ampacity: 10 },
-  { awg: 14, ampacity: 15 },
-  { awg: 12, ampacity: 20 },
-  { awg: 10, ampacity: 30 },
-  { awg: 8,  ampacity: 40 },
+  { awg: 18, ampacity: 7,  mm2: 0.75 },
+  { awg: 16, ampacity: 10, mm2: 1.5 },
+  { awg: 14, ampacity: 15, mm2: 2.5 },
+  { awg: 12, ampacity: 20, mm2: 4 },
+  { awg: 10, ampacity: 30, mm2: 6 },
+  { awg: 8,  ampacity: 40, mm2: 10 },
 ];
 
 function pickAWG(targetA) {
   const fit = AWG_TABLE.find(row => row.ampacity >= targetA);
-  if (fit) return { awg: fit.awg, overCapacity: false };
-  return { awg: AWG_TABLE.at(-1).awg, overCapacity: true };
+  if (fit) return { awg: fit.awg, mm2: fit.mm2, overCapacity: false };
+  const last = AWG_TABLE.at(-1);
+  return { awg: last.awg, mm2: last.mm2, overCapacity: true };
 }
 
 // Three tiers per user choice:

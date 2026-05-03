@@ -175,6 +175,8 @@ label:has(> input:disabled) { color: var(--muted); }
   margin-left: 0.4rem;
 }
 
+.aux { color: var(--muted); margin-left: 0.4rem; font-size: 0.95em; }
+
 button.info {
   display: inline-flex;
   align-items: center;

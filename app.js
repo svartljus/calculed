@@ -132,16 +132,17 @@ function paintCard(card, strip) {
   $('current').value  = fmt(draw.current_A);
   $('power').value    = fmt(draw.power_W, 1);
 
-  // Inject summary
-  const dropPerSeg = inj.vDrop_singleFeed_V / (inj.nFeeds * inj.nFeeds);
-  const dropStr = Number.isFinite(dropPerSeg) ? `~${fmt(dropPerSeg)} V drop` : '';
+  // Drop summary — lead with what happens with no power injection,
+  // then offer the optional injection plan to reduce drop.
+  const oneFeedDropPct = (inj.vDrop_singleFeed_V / chip.voltage) * 100;
+  const tolerancePct = strip.maxDropPercent;
   let summary;
-  if (inj.nFeeds === 1) {
-    summary = `single feed${dropStr ? ` · ${dropStr}` : ''}`;
-  } else if (Number.isFinite(inj.injectEvery_m)) {
-    summary = `every ${fmt(inj.injectEvery_m)} m · ${inj.nFeeds} feeds${dropStr ? ` · ${dropStr}` : ''}`;
-  } else {
+  if (!Number.isFinite(oneFeedDropPct)) {
     summary = '—';
+  } else if (inj.nFeeds === 1) {
+    summary = `${fmt(oneFeedDropPct)}% drop end-to-end with one feed — no injection needed`;
+  } else {
+    summary = `${fmt(oneFeedDropPct)}% drop with one feed · ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m for ≤${tolerancePct}%`;
   }
   $('injectionSummary').value = summary;
 
@@ -150,6 +151,9 @@ function paintCard(card, strip) {
   $('awgMin').value      = awgStr(awg.min);
   $('awgBalanced').value = awgStr(awg.balanced);
   $('awgSolid').value    = awgStr(awg.solid);
+  $('mm2Min').value      = fmt(awg.min.mm2);
+  $('mm2Balanced').value = fmt(awg.balanced.mm2);
+  $('mm2Solid').value    = fmt(awg.solid.mm2);
   $('fuseMin').value      = fmt(fuse.min);
   $('fuseBalanced').value = fmt(fuse.balanced);
   $('fuseSolid').value    = fmt(fuse.solid);
