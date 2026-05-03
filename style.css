@@ -122,8 +122,8 @@ article {
   gap: 0.5rem;
   transition: border-left-color 0.15s;
 }
-article[data-status="ok"]   { border-left-color: #2e8b57; }
-article[data-status="warn"] { border-left-color: #d97706; }
+article[data-status="ok"]   { border-left-color: #16a34a; border-left-width: 4px; }
+article[data-status="warn"] { border-left-color: #d97706; border-left-width: 4px; }
 
 fieldset {
   border: 0;

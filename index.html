@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="WLED install planner — pick the right Quinled controllers, power supplies and cabling for your LED strip projects. Drop-in calculator with prices and a buyable BOM.">
   <title>CalcuLED</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -49,20 +51,17 @@
         </tfoot>
       </table>
       <dl class="rec-meta">
-        <dt>Premium alternative</dt> <dd><output name="recPremium">—</output></dd>
-        <dt>Alternatives</dt>        <dd><output name="recAlts">—</output></dd>
+        <dt>PixLite + Mean Well</dt>  <dd><output name="recPremium">—</output></dd>
+        <dt>Other Quinled options</dt> <dd><output name="recAlts">—</output></dd>
       </dl>
       <p class="rec-note"><output name="recNote"></output></p>
     </section>
 
-    <details id="footnote">
-      <summary>About the calculations</summary>
-      <p>mA-per-LED and Ω/m values from typical measurements published by <a href="https://quinled.info">quinled.info</a>, not spec-sheet maxima. Voltage-drop math uses a continuous approximation (current tapers along the strip). FPS goal of 42 is the Quinled-recommended comfort target. PSU sizes/prices match the Kingneonlux waterproof catalog; premium tier uses Mean Well HLG IP67 series.</p>
-    </details>
-
     <section id="references">
       <h2>References</h2>
       <dl>
+        <dt>About the calculations</dt>
+        <dd>mA-per-LED and Ω/m from typical quinled.info measurements (not spec maxima). Voltage drop uses a continuous approximation. FPS goal 42 = Quinled recommendation. PSU sizes/prices = Kingneonlux waterproof catalog; premium uses Mean Well HLG IP67.</dd>
         <dt>WLED</dt>
         <dd>
           <a href="https://kno.wled.ge/">Knowledge base</a> ·
