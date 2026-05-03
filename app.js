@@ -74,7 +74,6 @@ function renderStrip(strip) {
   }
 
   // Set form values from the strip object
-  node.querySelector('input[name="name"]').value = strip.name;
   const densityRadio = node.querySelector(`input[name="density"][value="${strip.density}"]`);
   if (densityRadio) densityRadio.checked = true;
   node.querySelector('input[name="length"]').value = strip.length;
@@ -98,7 +97,7 @@ function render() {
 function readStripFromCard(card) {
   return {
     id: card.dataset.id,
-    name: card.querySelector('input[name="name"]').value,
+    name: '',
     chipId: card.querySelector('select[name="chipId"]').value,
     density: Number(card.querySelector('input[name="density"]:checked')?.value ?? 60),
     lengthMode: card.querySelector('select[name="lengthMode"]').value,

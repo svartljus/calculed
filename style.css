@@ -25,25 +25,6 @@ article {
   gap: 0.5rem;
 }
 
-article header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.1rem;
-}
-article header input[name="name"] {
-  flex: 1;
-  font: inherit;
-  font-weight: 600;
-  padding: 0.25rem 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-}
-article header input[name="name"]::placeholder { color: var(--muted); font-weight: 400; }
-article header input[name="name"]:focus { outline: none; }
-
 fieldset {
   border: 0;
   padding: 0;
@@ -252,8 +233,20 @@ button {
 button:hover:not(:disabled) { background: var(--soft); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-[data-action="remove"] { font-size: 0.8em; padding: 0.2rem 0.5rem; color: var(--muted); }
-[data-action="remove"]:hover:not(:disabled) { color: inherit; }
+[data-action="remove"] {
+  margin-left: auto;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-action="remove"]:hover:not(:disabled) { color: inherit; background: var(--soft); }
 
 dialog {
   border: var(--rule);

@@ -40,11 +40,6 @@
   <template id="strip-template">
     <li>
       <article>
-        <header>
-          <input name="name" placeholder="">
-          <button type="button" data-action="remove">Remove</button>
-        </header>
-
         <fieldset class="strip-config">
           <label>Chip <select name="chipId"></select></label>
           <div class="field">
@@ -65,6 +60,7 @@
             </select>
           </label>
           <label><input type="checkbox" name="doubled"> Doubled</label>
+          <button type="button" data-action="remove" class="remove-btn" aria-label="Remove strip">×</button>
         </fieldset>
 
         <details class="advanced">
