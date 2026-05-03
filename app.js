@@ -174,9 +174,15 @@ function paintCard(card, strip) {
   const combo = recommendPSUs(psuTarget, chip.voltage);
   $('psu').value = combo.length ? formatPSUCombo(combo).replace(/ W$/, '') : '—';
   const totalCombo = totalPSUWatts(combo);
-  card.querySelector('[data-info-psu]').title = Number.isFinite(actualPower) && combo.length
+  let psuTip = Number.isFinite(actualPower) && combo.length
     ? `Power draw: ${fmt(actualPower, 1)} W\nTarget (25% headroom): ${Math.ceil(psuTarget)} W\nBuy: ${formatPSUCombo(combo)} = ${totalCombo} W (at ${chip.voltage}V)`
     : '';
+  if (strip.injection === 'bothEnds' && Number.isFinite(actualPower)) {
+    const halfCombo = recommendPSUs(psuTarget / 2, chip.voltage);
+    const halfTotal = totalPSUWatts(halfCombo);
+    psuTip += `\n\nOr split: 2 × (${formatPSUCombo(halfCombo)}) at each injection end = ${halfTotal * 2} W total — eliminates long heavy power wiring`;
+  }
+  card.querySelector('[data-info-psu]').title = psuTip;
 
   // Drop — show planned drop (oneEnd or bothEnds) with ✓/⚠ indicator
   const plannedDropPct = (inj.vDrop_planned_V / chip.voltage) * 100;
@@ -264,9 +270,15 @@ function paintTotals() {
   }
 
   const psuTotal = setup.psuCombo.reduce((sum, p) => sum + p.size * p.count, 0);
-  $rec('recPSUs').value = setup.psuCombo.length
+  const anyBothEnds = project.strips.some(s => s.injection === 'bothEnds');
+  let psuLine = setup.psuCombo.length
     ? `${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V) = ${psuTotal} W`
     : '—';
+  if (anyBothEnds && setup.psuCombo.length) {
+    const halfCombo = recommendPSUs(setup.psuTarget / 2, setup.voltage);
+    psuLine += ` — or split as 2 × ${formatPSUCombo(halfCombo)} at each injection end (no long heavy wiring)`;
+  }
+  $rec('recPSUs').value = psuLine;
 
   // Alternatives — other viable controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
