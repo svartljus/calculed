@@ -65,6 +65,11 @@ function renderStrip(strip) {
   const node = tpl.content.firstElementChild.cloneNode(true);
   node.dataset.id = strip.id;
 
+  // Make radio-group names unique per strip so selections don't bleed across cards
+  node.querySelectorAll('input[type="radio"]').forEach(r => {
+    r.name = `${r.name}-${strip.id}`;
+  });
+
   // Populate the chip <select>
   const chipSel = node.querySelector('select[name="chipId"]');
   for (const c of CHIPS) {
@@ -76,13 +81,13 @@ function renderStrip(strip) {
   }
 
   // Set form values from the strip object
-  const densityRadio = node.querySelector(`input[name="density"][value="${strip.density}"]`);
+  const densityRadio = node.querySelector(`input[name="density-${strip.id}"][value="${strip.density}"]`);
   if (densityRadio) densityRadio.checked = true;
   node.querySelector('input[name="length"]').value = strip.length;
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
-  const brightnessRadio = node.querySelector(`input[name="brightness"][value="${strip.brightness}"]`);
+  const brightnessRadio = node.querySelector(`input[name="brightness-${strip.id}"][value="${strip.brightness}"]`);
   if (brightnessRadio) brightnessRadio.checked = true;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
 
@@ -101,12 +106,12 @@ function readStripFromCard(card) {
     id: card.dataset.id,
     name: '',
     chipId: card.querySelector('select[name="chipId"]').value,
-    density: Number(card.querySelector('input[name="density"]:checked')?.value ?? 60),
+    density: Number(card.querySelector('input[name^="density-"]:checked')?.value ?? 96),
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
-    brightness: Number(card.querySelector('input[name="brightness"]:checked')?.value ?? 255),
+    brightness: Number(card.querySelector('input[name^="brightness-"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
     dataRunMeters: 0,
     maxDropPercent: 20,
