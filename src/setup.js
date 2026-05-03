@@ -68,10 +68,29 @@ function pickBrain(controllers, strips, totalPixels, getChip, maxQuinledUnits = 
   return null;
 }
 
-function pickPowerboard(currentPerBrain_A, voltage) {
+function pickPowerboard(currentNeeded_A, voltage) {
   const compatible = POWERBOARDS.filter(p => p.voltages.includes(voltage));
   if (!compatible.length) return null;
-  return compatible.find(p => p.amps >= currentPerBrain_A) ?? compatible.at(-1);
+  return compatible.find(p => p.amps >= currentNeeded_A) ?? compatible.at(-1);
+}
+
+// Power distribution / fusing layer between PSUs and the controller.
+// Returns one of:
+//   { kind: 'paired',  board, count }   - Dig-Octa Brain ↔ matching Power-x board
+//   { kind: 'central', board, count }   - any high-current setup needs centralized fused dist.
+//   { kind: 'builtin' }                 - small single-brain setup; controller's onboard fusing is enough
+//   { kind: 'split',   note }           - suggest 1 PSU per brain instead of central distribution
+function pickDistribution(brain, totalCurrent_A, voltage, units) {
+  if (brain?.id === 'digocta') {
+    const board = pickPowerboard(totalCurrent_A / units, voltage);
+    return { kind: 'paired', board, count: units };
+  }
+  // Multi-brain or high-current → suggest centralized distribution
+  if (units > 1 || totalCurrent_A > 30) {
+    const board = pickPowerboard(totalCurrent_A, voltage);
+    return { kind: 'central', board, count: 1 };
+  }
+  return { kind: 'builtin' };
 }
 
 // Returns a complete project setup recommendation: brain + powerboard + PSU combo.
@@ -81,22 +100,17 @@ export function recommendSetup(strips, totals, controllers, getChip, recommendPS
   if (!totals.totalPixels || !totals.outputCount) return null;
 
   const brain = pickBrain(controllers, strips, totals.totalPixels, getChip);
-  const needsPowerboard = brain?.id === 'digocta';
-  const currentPerBrain = totals.totalCurrent_A / (brain?.units || 1);
-  const powerboard = needsPowerboard ? pickPowerboard(currentPerBrain, totals.voltage) : null;
-  const powerboardCount = powerboard ? (brain.units || 1) : 0;
+  const distribution = brain ? pickDistribution(brain, totals.totalCurrent_A, totals.voltage, brain.units) : null;
 
   const psuTarget = totals.totalPower_W / 0.8;
   const psuCombo = recommendPSUs(psuTarget, totals.voltage);
 
   return {
     brain,
-    powerboard,
-    powerboardCount,
+    distribution,
     psuCombo,
     psuTarget,
     voltage: totals.voltage,
     mixedVoltage: totals.mixedVoltage,
-    needsPowerboard,
   };
 }

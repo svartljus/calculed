@@ -251,13 +251,16 @@ function paintTotals() {
     : 'No controller fits — split into multiple projects';
   $rec('recBrain').value = brainStr;
 
-  if (setup.needsPowerboard && setup.powerboard) {
-    const overCap = setup.powerboard.amps < (totals.totalCurrent_A / (setup.brain.units || 1));
-    $rec('recPower').value = `${setup.powerboard.name}${setup.powerboardCount > 1 ? ` × ${setup.powerboardCount}` : ''} (${setup.powerboard.amps} A, ${setup.powerboard.ports} fused ports)${overCap ? ' ⚠ over capacity' : ''}`;
+  const dist = setup.distribution;
+  if (!dist) {
+    $rec('recPower').value = '—';
+  } else if (dist.kind === 'paired' && dist.board) {
+    const overCap = dist.board.amps < (totals.totalCurrent_A / (setup.brain.units || 1));
+    $rec('recPower').value = `${dist.board.name} × ${dist.count} — paired with brain (${dist.board.amps} A, ${dist.board.ports} fused ports)${overCap ? ' ⚠ over capacity' : ''}`;
+  } else if (dist.kind === 'central' && dist.board) {
+    $rec('recPower').value = `${dist.board.name} standalone (${dist.board.amps} A, ${dist.board.ports} fused ports) — or 1 PSU per brain`;
   } else {
-    $rec('recPower').value = setup.brain?.id?.startsWith('pixlite')
-      ? 'Built into PixLite — connect PSUs directly'
-      : 'Built into controller — connect PSUs directly';
+    $rec('recPower').value = 'Built into controller — connect PSU directly';
   }
 
   const psuTotal = setup.psuCombo.reduce((sum, p) => sum + p.size * p.count, 0);
@@ -356,9 +359,29 @@ function projectAsPrompt() {
   lines.push('');
   if (setup) {
     lines.push('## Calculator recommendation');
-    if (setup.brain) lines.push(`- Controller: ${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''}`);
-    if (setup.powerboard) lines.push(`- Power board: ${setup.powerboard.name}${setup.powerboardCount > 1 ? ` × ${setup.powerboardCount}` : ''} (${setup.powerboard.amps} A)`);
+    if (setup.brain) {
+      const usedOuts = setup.brain.outputsUsed ?? totals.outputCount;
+      const chained = usedOuts < totals.outputCount;
+      const chainNote = chained ? ` (chained ${totals.outputCount} strips into ${usedOuts} outputs)` : '';
+      lines.push(`- Controller: ${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}`);
+    }
+    const dist = setup.distribution;
+    if (dist?.kind === 'paired' && dist.board) {
+      lines.push(`- Power board: ${dist.board.name} × ${dist.count} (${dist.board.amps} A, ${dist.board.ports} fused ports — paired with brain)`);
+    } else if (dist?.kind === 'central' && dist.board) {
+      lines.push(`- Power distribution: ${dist.board.name} standalone (${dist.board.amps} A, ${dist.board.ports} fused ports) — or 1 PSU per brain`);
+    } else if (dist?.kind === 'builtin') {
+      lines.push(`- Power distribution: built-in to controller, connect PSU directly`);
+    }
     if (setup.psuCombo.length) lines.push(`- PSUs: ${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V)`);
+
+    // Alternatives — other viable controllers, chain-aware
+    const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
+    const alts = recommendControllers(totals.totalPixels, 4, outputsByCtrl)
+      .filter(c => c.id !== setup.brain?.id)
+      .map(c => `${c.name}${c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : ''}`)
+      .join(', ');
+    if (alts) lines.push(`- Alternatives: ${alts}`);
   }
   lines.push('');
   lines.push('Please sanity-check this setup and suggest any optimisations or things I might be missing.');

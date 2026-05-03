@@ -25,13 +25,15 @@ test('zero pixels: every controller fits', () => {
   assert.equal(r.length, CONTROLLERS.length);
 });
 
-test('800 pixels: DigUno still fits exactly', () => {
-  const r = recommendControllers(800);
-  assert.ok(r.some(c => c.id === 'diguno'));
+test('1600 pixels: DigUno (2 outputs × 800) still fits exactly', () => {
+  const r = recommendControllers(1600);
+  const diguno = r.find(c => c.id === 'diguno');
+  assert.ok(diguno);
+  assert.equal(diguno.fits, true);
 });
 
-test('801 pixels: DigUno needs 2 units (still listed within multi-unit cap)', () => {
-  const r = recommendControllers(801);
+test('1601 pixels: DigUno needs 2 units (still listed within multi-unit cap)', () => {
+  const r = recommendControllers(1601);
   const diguno = r.find(c => c.id === 'diguno');
   assert.ok(diguno);
   assert.equal(diguno.unitsNeeded, 2);
