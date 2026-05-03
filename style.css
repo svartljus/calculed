@@ -19,11 +19,15 @@ main { display: grid; gap: 0.75rem; }
 
 article {
   border: var(--rule);
+  border-left: 3px solid color-mix(in srgb, currentColor 25%, transparent);
   border-radius: 6px;
   padding: 0.6rem 0.9rem 0.75rem;
   display: grid;
   gap: 0.5rem;
+  transition: border-left-color 0.15s;
 }
+article[data-status="ok"]   { border-left-color: #2e8b57; }
+article[data-status="warn"] { border-left-color: #d97706; }
 
 fieldset {
   border: 0;

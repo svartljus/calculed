@@ -200,6 +200,9 @@ function paintCard(card, strip) {
   ].filter(Boolean).join('\n');
   $('dataShort').value = shortLabel;
   card.querySelector('[data-info]').title = dataTip;
+
+  // Overall strip status — green if planned drop is within tolerance and wire isn't over capacity.
+  card.dataset.status = inj.planned_OK && !awg.balanced.overCapacity ? 'ok' : 'warn';
 }
 
 function paintTotals() {
