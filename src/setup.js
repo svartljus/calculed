@@ -2,9 +2,10 @@ import { computePixels, recommendMeanWellPSUs, priceForMeanWellHLG, formatMeanWe
 
 // Premium tier — PixLite Mk3 controllers, kept separate from the main catalog
 // so they don't pollute the default cheap recommendation.
+// Prices: Advatek RRP USD (E16-S verified 2026-05; A4-S derived from Moss LED CAD listing).
 const PIXLITE_CONTROLLERS = [
-  { id: 'pixlite-4',  name: 'PixLite A4-S Mk3',  outputs: 4,  perOutputMax: 1020, totalMax: 4080,  voltages: [5, 12, 24], priceUSD: 200 },
-  { id: 'pixlite-16', name: 'PixLite E16-S Mk3', outputs: 16, perOutputMax: 1020, totalMax: 16320, voltages: [5, 12, 24], priceUSD: 450 },
+  { id: 'pixlite-4',  name: 'PixLite A4-S Mk3',  outputs: 4,  perOutputMax: 1020, totalMax: 4080,  voltages: [5, 12, 24], priceUSD: 670  },
+  { id: 'pixlite-16', name: 'PixLite E16-S Mk3', outputs: 16, perOutputMax: 1020, totalMax: 16320, voltages: [5, 12, 24], priceUSD: 1099 },
 ];
 
 // Premium recommendation: PixLite controller + Mean Well HLG IP67 PSU(s).
