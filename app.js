@@ -465,6 +465,120 @@ stripsList.addEventListener('click', (e) => {
 
 document.getElementById('print').addEventListener('click', () => window.print());
 
+document.getElementById('export-json').addEventListener('click', () => {
+  const filename = `${(project.name || 'calculed').toLowerCase().replace(/\s+/g, '-')}.json`;
+  downloadFile(filename, JSON.stringify(project, null, 2), 'application/json');
+});
+
+document.getElementById('export-csv').addEventListener('click', () => {
+  const filename = `${(project.name || 'calculed').toLowerCase().replace(/\s+/g, '-')}.csv`;
+  downloadFile(filename, projectAsCSV(), 'text/csv');
+});
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(v) {
+  if (v == null) return '';
+  const s = String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function csvRow(...cells) { return cells.map(csvCell).join(',') + '\n'; }
+
+function projectAsCSV() {
+  const totals = computeProjectTotals(project.strips, getChip);
+  const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs, project.prefs);
+  let out = '';
+
+  // Header
+  out += csvRow('# Project', project.name || '');
+  if (project.meta?.client) out += csvRow('# Client', project.meta.client);
+  if (project.meta?.venue)  out += csvRow('# Venue',  project.meta.venue);
+  if (project.meta?.date)   out += csvRow('# Date',   project.meta.date);
+  out += '\n';
+
+  // Strips
+  out += '# Strips\n';
+  out += csvRow('Idx', 'Chip', 'Voltage', 'Density', 'Length', 'Unit', 'Doubled', 'BothEnds', 'Brightness', 'Color', 'Qty', 'Pixels/strip', 'LEDs/strip', 'Current/strip (A)', 'Power/strip (W)', 'FPS', 'Drop %', 'OK', 'Notes');
+  project.strips.forEach((s, i) => {
+    const chip = getChip(s.chipId);
+    if (!chip) return;
+    const draw = computeStripDraw(s, chip);
+    const inj  = computeInjection(s, chip);
+    out += csvRow(
+      i + 1,
+      chip.name,
+      chip.voltage,
+      s.density,
+      s.length,
+      s.lengthMode === 'meters' ? 'm' : 'px',
+      s.runs === 2 ? 'Y' : '',
+      s.injection === 'bothEnds' ? 'Y' : '',
+      `${Math.round(s.brightness/255*100)}%`,
+      s.colorMode,
+      s.quantity || 1,
+      draw.pixels,
+      draw.ledCount,
+      draw.current_A.toFixed(2),
+      draw.power_W.toFixed(0),
+      computeFPS(draw.pixels, chip),
+      (inj.vDrop_planned_V / chip.voltage * 100).toFixed(1),
+      inj.planned_OK ? 'Y' : '',
+      s.notes || '',
+    );
+  });
+  out += '\n';
+
+  // Totals
+  out += '# Totals\n';
+  out += csvRow('Total power (W)', Math.ceil(totals.totalPower_W));
+  out += csvRow('Total current (A)', totals.totalCurrent_A.toFixed(1));
+  out += csvRow('Total pixels', totals.totalPixels);
+  out += csvRow('Total LEDs', totals.totalLeds);
+  out += csvRow('Voltage', totals.voltage);
+  out += '\n';
+
+  // BOM
+  if (setup) {
+    out += '# BOM\n';
+    out += csvRow('Item', 'Notes', 'Qty', `Unit (${project.currency})`, `Subtotal (${project.currency})`);
+    let total = 0;
+    if (setup.brain) {
+      const fx = (setup.brain.priceUSD || 0) * (FX[project.currency]?.rate || 1);
+      const sub = fx * setup.brain.units;
+      total += sub;
+      out += csvRow(setup.brain.name, `${setup.brain.outputs} outputs each, ${setup.brain.outputsUsed} used`, setup.brain.units, fx.toFixed(0), sub.toFixed(0));
+    }
+    const dist = setup.distribution;
+    if (dist?.kind === 'paired' && dist.board) {
+      const fx = (dist.board.priceUSD || 0) * (FX[project.currency]?.rate || 1);
+      const sub = fx * dist.count;
+      total += sub;
+      out += csvRow(dist.board.name, `paired, ${dist.board.amps} A, ${dist.board.ports} ports`, dist.count, fx.toFixed(0), sub.toFixed(0));
+    } else if (dist?.kind === 'central' && dist.board) {
+      const fx = (dist.board.priceUSD || 0) * (FX[project.currency]?.rate || 1);
+      total += fx;
+      out += csvRow(`${dist.board.name} (PDU)`, `${dist.board.amps} A, ${dist.board.ports} ports`, 1, fx.toFixed(0), fx.toFixed(0));
+    }
+    for (const { size, count } of setup.psuCombo) {
+      const usd = priceForPSU(size, setup.voltage) || 0;
+      const fx = usd * (FX[project.currency]?.rate || 1);
+      const sub = fx * count;
+      total += sub;
+      out += csvRow(`${size} W ${setup.voltage}V PSU`, 'Kingneonlux IP67', count, fx.toFixed(0), sub.toFixed(0));
+    }
+    out += csvRow('TOTAL', '', '', '', total.toFixed(0));
+  }
+
+  return out;
+}
+
 document.getElementById('copy-prompt').addEventListener('click', async () => {
   const text = projectAsPrompt();
   try {
