@@ -31,23 +31,35 @@ export function computeProjectTotals(strips, getChip) {
   let totalPower_W = 0;
   let totalLeds = 0;
   let totalPixels = 0;
+  let totalCurrent_A = 0;
+  let outputCount = 0;
+  const voltages = new Set();
   for (const s of strips) {
     const chip = getChip(s.chipId);
     // silent skip: stale chipId from old localStorage; UI surfaces unknown chips separately
     if (!chip) continue;
     const r = computeStripDraw(s, chip);
     const q = s.quantity || 1;
-    totalPower_W += r.power_W * q;
-    totalLeds   += r.ledCount * q;
-    totalPixels += r.pixels * q;
+    totalPower_W   += r.power_W * q;
+    totalLeds      += r.ledCount * q;
+    totalPixels    += r.pixels * q;
+    totalCurrent_A += r.current_A * q;
+    outputCount    += q;       // each copy of the strip → its own output
+    voltages.add(chip.voltage);
   }
+  const mixedVoltage = voltages.size > 1;
+  const voltage = voltages.size === 1 ? [...voltages][0] : 12;
   // Three PSU tiers — same headroom factors as wire/fuse for consistency.
   const psu = {
     min:      totalPower_W * 1.0,
     balanced: totalPower_W * 1.25,
     solid:    totalPower_W * 1.5,
   };
-  return { totalPower_W, psu, totalLeds, totalPixels, psuRec_W: psu.balanced };
+  return {
+    totalPower_W, psu, totalLeds, totalPixels, totalCurrent_A,
+    outputCount, voltage, mixedVoltage,
+    psuRec_W: psu.balanced,
+  };
 }
 
 export function computeInjection(strip, chip) {

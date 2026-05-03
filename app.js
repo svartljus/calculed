@@ -1,6 +1,7 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS } from './src/calc.js';
-import { recommendControllers } from './src/controllers.js';
+import { CONTROLLERS, recommendControllers } from './src/controllers.js';
+import { recommendSetup } from './src/setup.js';
 
 const STORAGE_KEY = 'calculed:project';
 
@@ -227,20 +228,51 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
-  document.querySelector('output[name="totalPower"]').value  = Number.isFinite(totals.totalPower_W)
+  document.querySelector('output[name="totalPower"]').value   = Number.isFinite(totals.totalPower_W)
     ? `~${Math.ceil(totals.totalPower_W)}` : '—';
-  document.querySelector('output[name="totalPixels"]').value = intOrDash(totals.totalPixels);
-  document.querySelector('output[name="totalLeds"]').value   = intOrDash(totals.totalLeds);
+  document.querySelector('output[name="totalCurrent"]').value = fmt(totals.totalCurrent_A);
+  document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
+  document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
 
-  const ctrls = recommendControllers(totals.totalPixels);
-  const ctrlText = ctrls
-    .map(c => {
-      const unit = c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : '';
-      const cap = c.totalMax ? `${c.totalMax} px` : `${c.outputs}×${c.perOutputMax}`;
-      return `${c.name}${unit} (${cap})`;
-    })
+  const setup = recommendSetup(totals, CONTROLLERS, recommendPSUs);
+  const $rec = name => document.querySelector(`output[name="${name}"]`);
+
+  if (!setup || totals.totalPixels === 0) {
+    $rec('recBrain').value = $rec('recPower').value = $rec('recPSUs').value = $rec('recAlts').value = '—';
+    $rec('recNote').textContent = totals.totalPixels === 0 ? 'Add at least one strip.' : '';
+    return;
+  }
+
+  const brainStr = setup.brain
+    ? `${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${totals.outputCount} used`
+    : 'No controller fits — split into multiple projects';
+  $rec('recBrain').value = brainStr;
+
+  if (setup.needsPowerboard && setup.powerboard) {
+    const overCap = setup.powerboard.amps < (totals.totalCurrent_A / (setup.brain.units || 1));
+    $rec('recPower').value = `${setup.powerboard.name}${setup.powerboardCount > 1 ? ` × ${setup.powerboardCount}` : ''} (${setup.powerboard.amps} A, ${setup.powerboard.ports} fused ports)${overCap ? ' ⚠ over capacity' : ''}`;
+  } else {
+    $rec('recPower').value = setup.brain?.id?.startsWith('pixlite')
+      ? 'Built into PixLite — connect PSUs directly'
+      : 'Built into controller — connect PSUs directly';
+  }
+
+  const psuTotal = setup.psuCombo.reduce((sum, p) => sum + p.size * p.count, 0);
+  $rec('recPSUs').value = setup.psuCombo.length
+    ? `${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V) = ${psuTotal} W`
+    : '—';
+
+  // Alternatives — other viable controllers
+  const alts = recommendControllers(totals.totalPixels)
+    .filter(c => c.id !== setup.brain?.id)
+    .map(c => `${c.name}${c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : ''}`)
+    .slice(0, 4)
     .join(' · ');
-  document.querySelector('output[name="controllers"]').value = ctrlText || '—';
+  $rec('recAlts').value = alts || 'none';
+
+  $rec('recNote').textContent = totals.mixedVoltage
+    ? '⚠ Mixed voltages across strips — recommendation assumes a single supply rail; you may need separate PSU rails per voltage.'
+    : '';
 }
 
 function syncFromDom() {
@@ -280,3 +312,51 @@ stripsList.addEventListener('click', (e) => {
 });
 
 document.getElementById('print').addEventListener('click', () => window.print());
+
+document.getElementById('copy-prompt').addEventListener('click', async () => {
+  const text = projectAsPrompt();
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copy-prompt');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  } catch {
+    // Fallback: open a textarea so user can copy manually
+    prompt('Copy this:', text);
+  }
+});
+
+function projectAsPrompt() {
+  const totals = computeProjectTotals(project.strips, getChip);
+  const setup = recommendSetup(totals, CONTROLLERS, recommendPSUs);
+  const lines = [];
+  lines.push(`# WLED install plan: ${project.name || 'untitled'}`);
+  lines.push('');
+  lines.push('## Strips');
+  for (const s of project.strips) {
+    const chip = getChip(s.chipId);
+    if (!chip) continue;
+    const draw = computeStripDraw(s, chip);
+    const inj  = computeInjection(s, chip);
+    const q = s.quantity || 1;
+    const planLabel = s.injection === 'bothEnds' ? 'feed both ends' : 'feed one end';
+    lines.push(`- **${s.name || 'unnamed'}** × ${q}: ${chip.name} (${chip.voltage}V), ${s.density}/m, ${s.length}${s.lengthMode === 'meters' ? ' m' : ' px'}${s.runs === 2 ? ', doubled' : ''}, ${planLabel}, brightness ${Math.round(s.brightness/255*100)}% ${s.colorMode}`);
+    lines.push(`  - ${draw.pixels} pixels, ${draw.ledCount} LEDs, ${draw.current_A.toFixed(2)} A, ${draw.power_W.toFixed(0)} W per strip`);
+    lines.push(`  - drop ${(inj.vDrop_planned_V/chip.voltage*100).toFixed(1)}% (${inj.planned_OK ? 'OK' : 'OVER'}), ${computeFPS(draw.pixels, chip)} FPS`);
+  }
+  lines.push('');
+  lines.push('## Project totals');
+  lines.push(`- ${totals.totalPixels} pixels · ${totals.totalLeds} LEDs · ${totals.totalCurrent_A.toFixed(1)} A · ${Math.ceil(totals.totalPower_W)} W`);
+  lines.push(`- ${totals.outputCount} outputs needed · ${totals.voltage}V${totals.mixedVoltage ? ' (mixed!)' : ''}`);
+  lines.push('');
+  if (setup) {
+    lines.push('## Calculator recommendation');
+    if (setup.brain) lines.push(`- Controller: ${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''}`);
+    if (setup.powerboard) lines.push(`- Power board: ${setup.powerboard.name}${setup.powerboardCount > 1 ? ` × ${setup.powerboardCount}` : ''} (${setup.powerboard.amps} A)`);
+    if (setup.psuCombo.length) lines.push(`- PSUs: ${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V)`);
+  }
+  lines.push('');
+  lines.push('Please sanity-check this setup and suggest any optimisations or things I might be missing.');
+  return lines.join('\n');
+}

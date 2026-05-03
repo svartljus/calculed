@@ -20,16 +20,27 @@
       <div class="totals-row">
         <dl>
           <dt>Total power</dt> <dd><output name="totalPower">0</output> W</dd>
+          <dt>Current</dt>     <dd><output name="totalCurrent">0</output> A</dd>
           <dt>Pixels</dt>      <dd><output name="totalPixels">0</output></dd>
           <dt>LEDs</dt>        <dd><output name="totalLeds">0</output></dd>
         </dl>
-        <button type="button" id="print">Print BOM</button>
-      </div>
-      <div class="controllers-row">
-        <span class="totals-label">Fits</span>
-        <output name="controllers">—</output>
+        <div class="totals-actions">
+          <button type="button" id="copy-prompt">Copy as prompt</button>
+          <button type="button" id="print">Print BOM</button>
+        </div>
       </div>
     </footer>
+
+    <section id="recommendation">
+      <h2>Recommended setup</h2>
+      <dl>
+        <dt>Controller</dt>      <dd><output name="recBrain">—</output></dd>
+        <dt>Power board</dt>     <dd><output name="recPower">—</output></dd>
+        <dt>Power supplies</dt>  <dd><output name="recPSUs">—</output></dd>
+        <dt>Alternatives</dt>    <dd><output name="recAlts">—</output></dd>
+      </dl>
+      <p class="rec-note"><output name="recNote"></output></p>
+    </section>
 
     <details id="footnote">
       <summary>About the calculations</summary>

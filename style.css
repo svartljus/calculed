@@ -23,6 +23,36 @@ body {
 
 main { display: grid; gap: 0.75rem; }
 
+#recommendation {
+  border: var(--rule);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  background: var(--soft);
+  margin-top: 1rem;
+}
+#recommendation h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: var(--fs-mini);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+#recommendation dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1.25rem;
+  row-gap: 0.4rem;
+  font-size: 1em;
+}
+#recommendation dt { color: var(--muted); }
+#recommendation dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rec-note { margin: 0.75rem 0 0 0; font-size: var(--fs-small); color: var(--muted); }
+.rec-note:empty { display: none; }
+
+.totals-actions { display: flex; gap: 0.5rem; }
+
 #project-header { padding: 0.25rem 0 0.5rem; }
 #project-name {
   font: inherit;
