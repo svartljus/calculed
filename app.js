@@ -415,6 +415,12 @@ function paintTotals() {
         notes: `${dist.board.amps} A, ${dist.board.ports} fused ports`,
         unit: dist.board.priceUSD,
       }, 1 * iter, cardLabel);
+    } else if (dist?.kind === 'busbar') {
+      addItem('busbar', {
+        item: 'DC distribution block',
+        notes: 'fused terminal block — splits PSU feed across multiple controllers',
+        unit: 10,
+      }, dist.count * iter, cardLabel);
     }
     for (const { size, count } of setup.psuCombo) {
       const unit = priceForPSU(size, setup.voltage);
@@ -749,6 +755,7 @@ function projectAsPrompt() {
     const dist = cardSetup.distribution;
     if (dist?.kind === 'paired' && dist.board) add(`pb-${dist.board.id}`, dist.board.name, dist.count * iter, dist.board.priceUSD);
     else if (dist?.kind === 'central' && dist.board) add(`pb-${dist.board.id}-pdu`, `${dist.board.name} (PDU)`, 1 * iter, dist.board.priceUSD);
+    else if (dist?.kind === 'busbar') add('busbar', 'DC distribution block', dist.count * iter, 10);
     for (const { size, count } of cardSetup.psuCombo) {
       add(`psu-${cardSetup.voltage}-${size}`, `${size} W ${cardSetup.voltage}V PSU`, count * iter, priceForPSU(size, cardSetup.voltage));
     }

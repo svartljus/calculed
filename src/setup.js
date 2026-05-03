@@ -129,14 +129,14 @@ function pickPowerboard(currentNeeded_A, voltage) {
 function pickDistribution(brain, totalCurrent_A, voltage, units, forceCentral = false) {
   if (brain?.id === 'digocta') {
     // Dig-Octa stacks ~2 brains per Power-7-class powerboard (16 ports / 8 outputs/brain).
-    // The Quinled "disco" example pairs 4 brains with 2 powerboards.
     const boardsNeeded = Math.ceil(units / 2);
     const board = pickPowerboard(totalCurrent_A / boardsNeeded, voltage);
     return { kind: 'paired', board, count: boardsNeeded };
   }
-  if (forceCentral || units > 1) {
-    const board = pickPowerboard(totalCurrent_A, voltage);
-    return board ? { kind: 'central', board, count: 1 } : { kind: 'builtin' };
+  // Non-Dig-Octa (DigUno / DigQuad): they have built-in fusing, so multi-brain only
+  // needs a cheap fused terminal block / busbar to split the PSU feed.
+  if (units > 1 || forceCentral) {
+    return { kind: 'busbar', count: 1 };
   }
   return { kind: 'builtin' };
 }
