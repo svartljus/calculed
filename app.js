@@ -1,5 +1,5 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
-import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals } from './src/calc.js';
+import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts } from './src/calc.js';
 import { recommendControllers } from './src/controllers.js';
 
 const STORAGE_KEY = 'calculed:project';
@@ -150,13 +150,13 @@ function paintCard(card, strip) {
   card.querySelector('[data-info-power]').title =
     Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
-  // PSU — per-strip-group (power × quantity ÷ 0.8), rounded up
-  const psuBalanced = actualPower / 0.8;
-  $('psu').value = Number.isFinite(psuBalanced) ? `~${Math.ceil(psuBalanced)}` : '—';
-  const psuMin   = Math.ceil(actualPower);                  // 1.0×
-  const psuSolid = Math.ceil(actualPower / (1 / 1.5));      // 1.5×
-  card.querySelector('[data-info-psu]').title = Number.isFinite(actualPower)
-    ? `Min:      ${psuMin} W (no headroom)\nBalanced: ${Math.ceil(psuBalanced)} W (20% headroom)\nSolid:    ${psuSolid} W (50% headroom)`
+  // PSU — snap to standard 12V sizes (120/200/300/400/600 W)
+  const psuTarget = actualPower / 0.8;     // 25% headroom (balanced)
+  const combo = recommendPSUs(psuTarget);
+  $('psu').value = combo.length ? formatPSUCombo(combo).replace(/ W$/, '') : '—';
+  const totalCombo = totalPSUWatts(combo);
+  card.querySelector('[data-info-psu]').title = Number.isFinite(actualPower) && combo.length
+    ? `Power draw: ${fmt(actualPower, 1)} W\nTarget (25% headroom): ${Math.ceil(psuTarget)} W\nBuy: ${formatPSUCombo(combo)} = ${totalCombo} W`
     : '';
 
   // Drop — show planned drop (oneEnd or bothEnds) with ✓/⚠ indicator

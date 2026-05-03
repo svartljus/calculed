@@ -119,6 +119,40 @@ export function recommendAWG(currentA) {
   };
 }
 
+// Common off-the-shelf 12V/24V PSU wattages, ascending. 600 W is the practical
+// per-supply max at 12V — bigger projects use multiples.
+const PSU_SIZES_W = [120, 200, 300, 400, 600];
+
+// Greedy pack: as many of the largest as fit, then a single smaller PSU to
+// cover the remainder. Returns [{ size, count }, ...] in descending order.
+export function recommendPSUs(targetW, sizes = PSU_SIZES_W) {
+  if (!Number.isFinite(targetW) || targetW <= 0) return [];
+  const desc = [...sizes].sort((a, b) => b - a);
+  const max = desc[0];
+  // Single PSU fits
+  const single = desc.findLast ? desc.findLast(s => s >= targetW) : sizes.find(s => s >= targetW);
+  if (single) return [{ size: single, count: 1 }];
+  // Pack with full max-size PSUs, then top up with one smaller
+  const bigCount = Math.floor(targetW / max);
+  const remainder = targetW - bigCount * max;
+  const out = [{ size: max, count: bigCount }];
+  if (remainder > 0) {
+    const topUp = (desc.findLast ? desc.findLast(s => s >= remainder) : sizes.find(s => s >= remainder)) ?? max;
+    if (topUp === max) out[0].count += 1;
+    else out.push({ size: topUp, count: 1 });
+  }
+  return out;
+}
+
+export function formatPSUCombo(combo) {
+  if (!combo || combo.length === 0) return '—';
+  return combo.map(({ size, count }) => count === 1 ? `${size}` : `${count} × ${size}`).join(' + ') + ' W';
+}
+
+export function totalPSUWatts(combo) {
+  return combo.reduce((sum, { size, count }) => sum + size * count, 0);
+}
+
 const FUSE_SIZES_A = [1, 2, 3, 5, 7.5, 10, 15, 20, 25, 30];
 
 function pickFuse(targetA) {
