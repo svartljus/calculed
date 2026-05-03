@@ -52,7 +52,7 @@ function makeDefaultStrip() {
     density: 96,
     lengthMode: 'meters',
     length: 5,
-    runs: 1,
+    runs: 2,
     quantity: 1,
     brightness: 255,
     colorMode: 'white',
