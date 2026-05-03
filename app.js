@@ -53,6 +53,7 @@ function makeDefaultStrip() {
     lengthMode: 'meters',
     length: 5,
     runs: 1,
+    quantity: 1,
     brightness: 255,
     colorMode: 'white',
     dataRunMeters: 0,
@@ -80,6 +81,7 @@ function renderStrip(strip) {
   node.querySelector('input[name="length"]').value = strip.length;
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
+  node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
   const brightnessRadio = node.querySelector(`input[name="brightness"][value="${strip.brightness}"]`);
   if (brightnessRadio) brightnessRadio.checked = true;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
@@ -103,6 +105,7 @@ function readStripFromCard(card) {
     lengthMode: card.querySelector('select[name="lengthMode"]').value,
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
+    quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
     brightness: Number(card.querySelector('input[name="brightness"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
     dataRunMeters: 0,
@@ -126,11 +129,12 @@ function paintCard(card, strip) {
   const fuse = recommendFuse(perFeedCurrent);
   const data = dataRecommendation(strip, chip);
 
+  const q = strip.quantity || 1;
   const $ = name => card.querySelector(`output[name="${name}"]`);
-  $('pixels').value   = intOrDash(draw.pixels);
-  $('ledCount').value = intOrDash(draw.ledCount);
-  $('current').value  = fmt(draw.current_A);
-  $('power').value    = fmt(draw.power_W, 1);
+  $('pixels').value   = intOrDash(draw.pixels * q);
+  $('ledCount').value = intOrDash(draw.ledCount * q);
+  $('current').value  = fmt(draw.current_A * q);
+  $('power').value    = fmt(draw.power_W * q, 1);
 
   // Drop summary — lead with what happens with no power injection,
   // then offer the optional injection plan to reduce drop.
@@ -144,6 +148,7 @@ function paintCard(card, strip) {
   } else {
     summary = `${fmt(oneFeedDropPct)}% drop with one feed · ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m for ≤${tolerancePct}%`;
   }
+  if (q > 1) summary += ` · per strip (× ${q})`;
   $('injectionSummary').value = summary;
 
   // Three tiers for AWG and fuse
@@ -169,6 +174,10 @@ function paintCard(card, strip) {
   const fuseSame = fuse.min === fuse.balanced && fuse.balanced === fuse.solid;
   setCollapsed('[data-tiered="wire"]', wireSame);
   setCollapsed('[data-tiered="fuse"]', fuseSame);
+
+  // "each" suffix on per-strip recommendations when quantity > 1
+  const eachLabel = q > 1 ? `each (× ${q})` : '';
+  card.querySelectorAll('.each-suffix').forEach(el => el.textContent = eachLabel);
 
   // Data — short label + tooltip
   const shortLabel = chip.protocol + (data.dataRunWarning ? ' ⚠' : '');

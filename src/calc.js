@@ -36,9 +36,10 @@ export function computeProjectTotals(strips, getChip) {
     // silent skip: stale chipId from old localStorage; UI surfaces unknown chips separately
     if (!chip) continue;
     const r = computeStripDraw(s, chip);
-    totalPower_W += r.power_W;
-    totalLeds   += r.ledCount;
-    totalPixels += r.pixels;
+    const q = s.quantity || 1;
+    totalPower_W += r.power_W * q;
+    totalLeds   += r.ledCount * q;
+    totalPixels += r.pixels * q;
   }
   // Three PSU tiers — same headroom factors as wire/fuse for consistency.
   const psu = {

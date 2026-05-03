@@ -176,6 +176,10 @@ label:has(> input:disabled) { color: var(--muted); }
 }
 
 .aux { color: var(--muted); margin-left: 0.4rem; font-size: 0.95em; }
+.each-suffix { color: var(--muted); font-size: 0.85em; margin-left: 0.4rem; }
+
+/* Quantity input — narrow */
+input[name="quantity"] { width: 3.5rem; text-align: right; }
 
 /* Collapsed tiered display: hide min and solid, hide separators, drop tier hint */
 .tiered[data-collapsed] output[name$="Min"],

@@ -47,6 +47,7 @@
     <li>
       <article>
         <fieldset class="strip-config">
+          <label>Qty <input type="number" name="quantity" min="1" max="999" value="1"></label>
           <label>Chip <select name="chipId"></select></label>
           <div class="field">
             <span class="field-label">Density</span>
@@ -66,28 +67,22 @@
             </select>
           </label>
           <label><input type="checkbox" name="doubled"> Doubled</label>
+          <div class="field">
+            <span class="field-label">Brightness</span>
+            <div class="pills" role="radiogroup" aria-label="Max brightness">
+              <label><input type="radio" name="brightness" value="128">50%</label>
+              <label><input type="radio" name="brightness" value="191">75%</label>
+              <label><input type="radio" name="brightness" value="255" checked>100%</label>
+            </div>
+          </div>
+          <label>Color
+            <select name="colorMode">
+              <option value="white" selected>white</option>
+              <option value="average">average</option>
+            </select>
+          </label>
           <button type="button" data-action="remove" class="remove-btn" aria-label="Remove strip">×</button>
         </fieldset>
-
-        <details class="advanced" open>
-          <summary>Advanced</summary>
-          <fieldset>
-            <div class="field">
-              <span class="field-label">Brightness</span>
-              <div class="pills" role="radiogroup" aria-label="Max brightness">
-                <label><input type="radio" name="brightness" value="128">50%</label>
-                <label><input type="radio" name="brightness" value="191">75%</label>
-                <label><input type="radio" name="brightness" value="255" checked>100%</label>
-              </div>
-            </div>
-            <label>Color
-              <select name="colorMode">
-                <option value="white" selected>white (worst case)</option>
-                <option value="average">average (~⅓ duty)</option>
-              </select>
-            </label>
-          </fieldset>
-        </details>
 
         <section data-results>
           <dl class="stats">
@@ -107,12 +102,14 @@
               <dd class="tiered" data-tiered="wire">
                 <output name="awgMin">—</output><span class="sep"> · </span><strong><output name="awgBalanced">—</output></strong><span class="sep"> · </span><output name="awgSolid">—</output> AWG
                 <span class="aux">(<output name="mm2Min">—</output><span class="sep"> · </span><strong><output name="mm2Balanced">—</output></strong><span class="sep"> · </span><output name="mm2Solid">—</output> mm²)</span>
+                <span class="each-suffix" data-each="wire"></span>
               </dd>
             </div>
             <div>
               <dt>Fuse</dt>
               <dd class="tiered" data-tiered="fuse">
                 <output name="fuseMin">—</output><span class="sep"> · </span><strong><output name="fuseBalanced">—</output></strong><span class="sep"> · </span><output name="fuseSolid">—</output> A
+                <span class="each-suffix" data-each="fuse"></span>
               </dd>
             </div>
           </dl>
