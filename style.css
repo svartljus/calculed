@@ -177,6 +177,12 @@ label:has(> input:disabled) { color: var(--muted); }
 
 .aux { color: var(--muted); margin-left: 0.4rem; font-size: 0.95em; }
 
+/* Collapsed tiered display: hide min and solid, hide separators, drop tier hint */
+.tiered[data-collapsed] output[name$="Min"],
+.tiered[data-collapsed] output[name$="Solid"],
+.tiered[data-collapsed] .sep { display: none; }
+dt:has(+ dd[data-collapsed]) .tier-hint { display: none; }
+
 button.info {
   display: inline-flex;
   align-items: center;

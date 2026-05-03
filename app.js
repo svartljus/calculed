@@ -48,7 +48,7 @@ function makeDefaultStrip() {
     id: crypto.randomUUID(),
     name: '',
     chipId: DEFAULT_CHIP_ID,
-    density: 60,
+    density: 96,
     lengthMode: 'meters',
     length: 5,
     runs: 1,
@@ -157,6 +157,18 @@ function paintCard(card, strip) {
   $('fuseMin').value      = fmt(fuse.min);
   $('fuseBalanced').value = fmt(fuse.balanced);
   $('fuseSolid').value    = fmt(fuse.solid);
+
+  // Collapse tiered display when all three tiers produce the same value.
+  const setCollapsed = (sel, on) => {
+    const el = card.querySelector(sel);
+    if (!el) return;
+    if (on) el.dataset.collapsed = '';
+    else delete el.dataset.collapsed;
+  };
+  const wireSame = awg.min.awg === awg.balanced.awg && awg.balanced.awg === awg.solid.awg;
+  const fuseSame = fuse.min === fuse.balanced && fuse.balanced === fuse.solid;
+  setCollapsed('[data-tiered="wire"]', wireSame);
+  setCollapsed('[data-tiered="fuse"]', fuseSame);
 
   // Data — short label + tooltip
   const shortLabel = chip.protocol + (data.dataRunWarning ? ' ⚠' : '');

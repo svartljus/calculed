@@ -46,8 +46,8 @@
             <span class="field-label">Density</span>
             <div class="pills" role="radiogroup" aria-label="Density">
               <label><input type="radio" name="density" value="30">30</label>
-              <label><input type="radio" name="density" value="60" checked>60</label>
-              <label><input type="radio" name="density" value="96">96</label>
+              <label><input type="radio" name="density" value="60">60</label>
+              <label><input type="radio" name="density" value="96" checked>96</label>
               <label><input type="radio" name="density" value="144">144</label>
             </div>
             <span class="unit">/m</span>
@@ -93,19 +93,15 @@
             </div>
             <div>
               <dt>Wire <span class="tier-hint" title="Three options: bare-minimum gauge / standard 1.25× safety / extra headroom for sustained max brightness">min · balanced · solid</span></dt>
-              <dd>
-                <output name="awgMin">—</output> ·
-                <strong><output name="awgBalanced">—</output></strong> ·
-                <output name="awgSolid">—</output> AWG
-                <span class="aux">(<output name="mm2Min">—</output> · <strong><output name="mm2Balanced">—</output></strong> · <output name="mm2Solid">—</output> mm²)</span>
+              <dd class="tiered" data-tiered="wire">
+                <output name="awgMin">—</output><span class="sep"> · </span><strong><output name="awgBalanced">—</output></strong><span class="sep"> · </span><output name="awgSolid">—</output> AWG
+                <span class="aux">(<output name="mm2Min">—</output><span class="sep"> · </span><strong><output name="mm2Balanced">—</output></strong><span class="sep"> · </span><output name="mm2Solid">—</output> mm²)</span>
               </dd>
             </div>
             <div>
               <dt>Fuse</dt>
-              <dd>
-                <output name="fuseMin">—</output> ·
-                <strong><output name="fuseBalanced">—</output></strong> ·
-                <output name="fuseSolid">—</output> A
+              <dd class="tiered" data-tiered="fuse">
+                <output name="fuseMin">—</output><span class="sep"> · </span><strong><output name="fuseBalanced">—</output></strong><span class="sep"> · </span><output name="fuseSolid">—</output> A
               </dd>
             </div>
           </dl>
