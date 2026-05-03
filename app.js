@@ -1,5 +1,6 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals } from './src/calc.js';
+import { recommendControllers } from './src/controllers.js';
 
 const STORAGE_KEY = 'calculed:project';
 
@@ -193,6 +194,12 @@ function paintTotals() {
   document.querySelector('output[name="psuSolid"]').value    = fmt(totals.psu.solid, 0);
   document.querySelector('output[name="totalPixels"]').value = intOrDash(totals.totalPixels);
   document.querySelector('output[name="totalLeds"]').value   = intOrDash(totals.totalLeds);
+
+  const ctrls = recommendControllers(totals.totalPixels);
+  const ctrlText = ctrls
+    .map(c => `${c.name} (${c.outputs}×${c.perOutputMax})${c.fits ? '' : ' — needs splitting'}`)
+    .join(' · ');
+  document.querySelector('output[name="controllers"]').value = ctrlText || '—';
 }
 
 function syncFromDom() {

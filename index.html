@@ -15,20 +15,26 @@
     </form>
 
     <footer id="totals">
-      <div class="hero">
-        <span class="hero-label">Recommended PSU</span>
-        <strong class="hero-value"><output name="psuRec">0</output> W</strong>
-        <span class="hero-sub">
-          <output name="psuMin">0</output> W min ·
-          <output name="psuSolid">0</output> W solid
-        </span>
+      <div class="totals-row">
+        <div class="hero">
+          <span class="hero-label">Recommended PSU</span>
+          <strong class="hero-value"><output name="psuRec">0</output> W</strong>
+          <span class="hero-sub">
+            <output name="psuMin">0</output> W min ·
+            <output name="psuSolid">0</output> W solid
+          </span>
+        </div>
+        <dl>
+          <dt>Power</dt>  <dd><output name="totalPower">0</output> W</dd>
+          <dt>Pixels</dt> <dd><output name="totalPixels">0</output></dd>
+          <dt>LEDs</dt>   <dd><output name="totalLeds">0</output></dd>
+        </dl>
+        <button type="button" id="print">Print BOM</button>
       </div>
-      <dl>
-        <dt>Power</dt>  <dd><output name="totalPower">0</output> W</dd>
-        <dt>Pixels</dt> <dd><output name="totalPixels">0</output></dd>
-        <dt>LEDs</dt>   <dd><output name="totalLeds">0</output></dd>
-      </dl>
-      <button type="button" id="print">Print BOM</button>
+      <div class="controllers-row">
+        <span class="totals-label">Fits</span>
+        <output name="controllers">—</output>
+      </div>
     </footer>
 
     <details id="footnote">
