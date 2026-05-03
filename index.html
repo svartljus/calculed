@@ -12,6 +12,19 @@
   <main>
     <header id="project-header">
       <input id="project-name" placeholder="Project name">
+      <div class="project-meta">
+        <label><span>Client</span> <input id="project-client" placeholder=""></label>
+        <label><span>Venue</span>  <input id="project-venue"  placeholder=""></label>
+        <label><span>Date</span>   <input id="project-date"   type="date"></label>
+        <label><span>Currency</span>
+          <select id="project-currency">
+            <option value="USD">USD $</option>
+            <option value="EUR">EUR €</option>
+            <option value="SEK">SEK kr</option>
+            <option value="GBP">GBP £</option>
+          </select>
+        </label>
+      </div>
     </header>
     <form id="project">
       <ul id="strips"></ul>

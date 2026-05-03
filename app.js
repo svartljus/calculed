@@ -6,6 +6,20 @@ import { formatMeanWellCombo } from './src/calc.js';
 
 const STORAGE_KEY = 'calculed:project';
 
+// Approximate FX rates against USD (Apr 2026, hand-set; user can refine).
+const FX = {
+  USD: { rate: 1.00,   symbol: '$',  suffix: false },
+  EUR: { rate: 0.92,   symbol: '€',  suffix: false },
+  SEK: { rate: 10.50,  symbol: 'kr', suffix: true  },
+  GBP: { rate: 0.79,   symbol: '£',  suffix: false },
+};
+function formatPrice(usd, currency = 'USD') {
+  if (!Number.isFinite(usd)) return '—';
+  const fx = FX[currency] || FX.USD;
+  const local = Math.round(usd * fx.rate);
+  return fx.suffix ? `${local} ${fx.symbol}` : `${fx.symbol}${local}`;
+}
+
 function saveToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
@@ -31,7 +45,13 @@ function loadFromStorage() {
       minDevices:   !!parsed.prefs.minDevices,
       centralPower: !!parsed.prefs.centralPower,
     } : { minDevices: false, centralPower: false };
-    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs };
+    const meta = parsed.meta && typeof parsed.meta === 'object' ? {
+      client: typeof parsed.meta.client === 'string' ? parsed.meta.client : '',
+      venue:  typeof parsed.meta.venue  === 'string' ? parsed.meta.venue  : '',
+      date:   typeof parsed.meta.date   === 'string' ? parsed.meta.date   : '',
+    } : { client: '', venue: '', date: '' };
+    const currency = FX[parsed.currency] ? parsed.currency : 'USD';
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency };
   } catch {
     return null;
   }
@@ -103,13 +123,41 @@ function renderStrip(strip) {
 }
 
 const stored = loadFromStorage();
-const project = stored ?? { version: 1, name: '', prefs: { minDevices: false, centralPower: false }, strips: [makeDefaultStrip()] };
+const project = stored ?? {
+  version: 1, name: '',
+  meta: { client: '', venue: '', date: '' },
+  currency: 'USD',
+  prefs: { minDevices: false, centralPower: false },
+  strips: [makeDefaultStrip()],
+};
 if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
+if (!project.meta) project.meta = { client: '', venue: '', date: '' };
+if (!project.currency) project.currency = 'USD';
 
 const projectNameInput = document.getElementById('project-name');
 projectNameInput.value = project.name || '';
 projectNameInput.addEventListener('input', () => {
   project.name = projectNameInput.value;
+  scheduleSave();
+});
+
+const metaInputs = {
+  client:   document.getElementById('project-client'),
+  venue:    document.getElementById('project-venue'),
+  date:     document.getElementById('project-date'),
+};
+const currencySelect = document.getElementById('project-currency');
+for (const [key, el] of Object.entries(metaInputs)) {
+  el.value = project.meta[key] || '';
+  el.addEventListener('input', () => {
+    project.meta[key] = el.value;
+    scheduleSave();
+  });
+}
+currencySelect.value = project.currency;
+currencySelect.addEventListener('change', () => {
+  project.currency = currencySelect.value;
+  paintTotals();
   scheduleSave();
 });
 
@@ -273,7 +321,7 @@ function paintTotals() {
 
   // Build BOM rows
   const rows = [];
-  const fmtUSD = n => Number.isFinite(n) ? `$${Math.round(n)}` : '—';
+  const fmtUSD = n => formatPrice(n, project.currency);
 
   // Controller
   if (setup.brain) {
@@ -366,7 +414,7 @@ function paintTotals() {
   if (premium && premium.brain) {
     const brainStr = `${premium.brain.units > 1 ? `${premium.brain.units} × ` : ''}${premium.brain.name}`;
     const psuStr = formatMeanWellCombo(premium.psuCombo);
-    $rec('recPremium').value = `${brainStr} + ${psuStr} ≈ $${Math.round(premium.totalCost)}`;
+    $rec('recPremium').value = `${brainStr} + ${psuStr} ≈ ${formatPrice(premium.totalCost, project.currency)}`;
   } else {
     $rec('recPremium').value = 'n/a (project too large for PixLite within 4 units)';
   }
@@ -433,6 +481,12 @@ function projectAsPrompt() {
   const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs);
   const lines = [];
   lines.push(`# WLED install plan: ${project.name || 'untitled'}`);
+  const metaBits = [
+    project.meta?.client && `Client: ${project.meta.client}`,
+    project.meta?.venue  && `Venue: ${project.meta.venue}`,
+    project.meta?.date   && `Date: ${project.meta.date}`,
+  ].filter(Boolean);
+  if (metaBits.length) lines.push(metaBits.join(' · '));
   lines.push('');
   lines.push('## Strips');
   for (const s of project.strips) {
@@ -472,7 +526,7 @@ function projectAsPrompt() {
     // Cost rollup
     const psuCost = totalPSUCost(setup.psuCombo, setup.voltage);
     const totalCost = (setup.cost?.controllerSubtotal ?? 0) + psuCost.total;
-    if (totalCost > 0) lines.push(`- Estimated cost: ~$${totalCost.toFixed(0)} (list, ex. shipping)`);
+    if (totalCost > 0) lines.push(`- Estimated cost: ${formatPrice(totalCost, project.currency)} (list, ex. shipping)`);
 
     // Alternatives — other viable controllers, chain-aware
     const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
