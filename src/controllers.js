@@ -4,10 +4,13 @@
 // `priceUSD` is an approximate retail price from the Quinled shop.
 // Sources verified 2026-05: quinled.info specifications pages.
 // PixLite Mk3 controllers omitted — Quinled is the price/value sweet spot for this user.
+// perOutputMax is a 30-FPS-comfortable WLED practical limit (~1000 pixels at 30 µs/pixel = 33 FPS).
+// totalMax (Dig-Octa only) is Quinled's recommended WLED total of ~2000 LEDs per brain;
+// you can stretch toward 2500–3000 with lighter firmware (ESPixelStick v4).
 export const CONTROLLERS = [
-  { id: 'diguno',  name: 'DigUno',         outputs: 2, perOutputMax: 800, voltages: [5, 12],     priceUSD: 45 },
-  { id: 'digquad', name: 'DigQuad',        outputs: 4, perOutputMax: 800, voltages: [5, 12, 24], priceUSD: 60 },
-  { id: 'digocta', name: 'Dig-Octa Brain', outputs: 8, perOutputMax: 600, totalMax: 2000, voltages: [5, 12, 24], priceUSD: 55 },
+  { id: 'diguno',  name: 'DigUno',         outputs: 2, perOutputMax: 1000, voltages: [5, 12],     priceUSD: 45 },
+  { id: 'digquad', name: 'DigQuad',        outputs: 4, perOutputMax: 1000, voltages: [5, 12, 24], priceUSD: 60 },
+  { id: 'digocta', name: 'Dig-Octa Brain', outputs: 8, perOutputMax: 1000, totalMax: 2500, voltages: [5, 12, 24], priceUSD: 55 },
 ];
 
 const capacityOf = c => Math.min(c.outputs * c.perOutputMax, c.totalMax ?? Infinity);

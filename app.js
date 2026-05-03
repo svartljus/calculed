@@ -239,14 +239,13 @@ function paintCard(card, strip) {
   card.querySelector('[data-info-power]').title =
     Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
-  // FPS — per single output (one strip's pixel count)
-  // Quinled-recommended target: 42 FPS. Below 30 = visible flicker, below 20 = severe.
+  // FPS — per single output (one strip's pixel count). Comfort floor: 30 FPS.
   const fps = computeFPS(draw.pixels, chip);
-  const fpsBelowGoal = fps < 42;
   const fpsLow = fps < 30;
-  $('fps').value = Number.isFinite(fps) ? `${fpsBelowGoal ? '⚠ ' : ''}${fps}` : '∞';
+  const fpsSevere = fps < 20;
+  $('fps').value = Number.isFinite(fps) ? `${fpsLow ? '⚠ ' : ''}${fps}` : '∞';
   card.querySelector('[data-info-fps]').title = Number.isFinite(fps)
-    ? `${fps} FPS at ${draw.pixels} pixels per output (~${chip.protocol.startsWith('2-wire') ? 4 : 30} µs/pixel)\nQuinled-recommended target: 42 FPS. Flicker becomes visible below ~30 FPS, severe below 20.`
+    ? `${fps} FPS at ${draw.pixels} pixels per output (~${chip.protocol.startsWith('2-wire') ? 4 : 30} µs/pixel)\n30–42 FPS is comfortable for most effects. Below 30 starts to feel jittery; below 20 is visibly choppy.`
     : `${chip.protocol} — effectively no FPS limit at typical pixel counts`;
 
   // PSU — snap to chip-voltage-appropriate standard sizes
