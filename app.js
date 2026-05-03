@@ -83,7 +83,6 @@ function renderStrip(strip) {
   node.querySelector('input[name="brightness"]').value = strip.brightness;
   node.querySelector('select[name="colorMode"]').value = strip.colorMode;
   node.querySelector('input[name="dataRunMeters"]').value = strip.dataRunMeters;
-  node.querySelector('input[name="maxDropPercent"]').value = strip.maxDropPercent;
 
   return node;
 }
@@ -107,7 +106,7 @@ function readStripFromCard(card) {
     brightness: Number(card.querySelector('input[name="brightness"]').value),
     colorMode: card.querySelector('select[name="colorMode"]').value,
     dataRunMeters: Number(card.querySelector('input[name="dataRunMeters"]').value),
-    maxDropPercent: Number(card.querySelector('input[name="maxDropPercent"]').value),
+    maxDropPercent: 10,
   };
 }
 

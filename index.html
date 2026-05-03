@@ -69,7 +69,7 @@
           <button type="button" data-action="remove" class="remove-btn" aria-label="Remove strip">×</button>
         </fieldset>
 
-        <details class="advanced">
+        <details class="advanced" open>
           <summary>Advanced</summary>
           <fieldset>
             <label>Brightness <input type="range" name="brightness" min="0" max="255" value="255"></label>
@@ -79,7 +79,6 @@
                 <option value="average">average (~⅓ duty)</option>
               </select>
             </label>
-            <label>Max V drop <input type="number" name="maxDropPercent" min="1" max="50" value="10"> %</label>
             <label>Data wire <input type="number" name="dataRunMeters" step="0.1" min="0" value="0.3"> m</label>
           </fieldset>
         </details>
