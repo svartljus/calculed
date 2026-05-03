@@ -222,9 +222,13 @@ article {
 }
 
 /* Voltage hue — subtle background tint, scoped to chip's nominal voltage */
-article[data-voltage="5"]  { background: color-mix(in srgb, var(--v5)  4%, transparent); }
-article[data-voltage="12"] { background: color-mix(in srgb, var(--v12) 4%, transparent); }
-article[data-voltage="24"] { background: color-mix(in srgb, var(--v24) 4%, transparent); }
+article[data-voltage="5"]  { background: color-mix(in srgb, var(--v5)  8%, transparent); }
+article[data-voltage="12"] { background: color-mix(in srgb, var(--v12) 8%, transparent); }
+article[data-voltage="24"] { background: color-mix(in srgb, var(--v24) 8%, transparent); }
+article[data-voltage="5"]  > .strip-config legend,
+article[data-voltage="12"] > .strip-config legend,
+article[data-voltage="24"] > .strip-config legend { color: var(--muted); }
+article:hover { box-shadow: 0 1px 0 color-mix(in srgb, currentColor 10%, transparent), 0 4px 12px color-mix(in srgb, currentColor 5%, transparent); }
 
 /* Status border overrides voltage tint on the left edge */
 article[data-status="ok"]   { border-left-color: var(--ok); }
