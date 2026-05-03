@@ -10,6 +10,12 @@
 </head>
 <body>
   <main>
+    <details id="how-to" open>
+      <summary>About CalcuLED</summary>
+      <p>WLED install planner — pick controllers, power supplies and cables for addressable LED strip projects. Add a strip below and the project summary, recommended setup and BOM update live. Use <strong>Save JSON</strong> to keep a project, <strong>Load JSON</strong> to bring it back, <strong>Copy as prompt</strong> to hand the spec to an LLM for review, or <strong>Print BOM</strong> for an install hand-off.</p>
+      <p>Numbers come from measured Quinled chip resistance, Kingneonlux IP67 PSU prices and AliExpress-tier strip prices — all values approximate, adjust against actual quotes.</p>
+    </details>
+
     <header id="project-header">
       <input id="project-name" placeholder="Project name">
       <div class="project-meta">
@@ -127,6 +133,7 @@
 
       <footer class="rec-actions">
         <button type="button" id="copy-prompt">Copy as prompt</button>
+        <button type="button" id="copy-wled">Copy WLED config</button>
         <button type="button" id="export-csv">CSV</button>
         <button type="button" id="export-json">Save JSON</button>
         <button type="button" id="import-json-btn">Load JSON</button>

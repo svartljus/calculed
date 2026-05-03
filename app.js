@@ -475,6 +475,30 @@ function paintTotals() {
         }, totalWire_m, cardLabel);
       }
     }
+
+    // Connectors & enclosures (outdoor IP67 termination per cable entry point).
+    // 1 cable entry per single-end-fed strip, 2 for both-ends. JST + box + breakout PCB per entry.
+    const ends = (card.injection === 'bothEnds' ? 2 : 1) * (card.quantity || 1) * iter;
+    if (ends > 0) {
+      addItem('jst-4pin', {
+        category: 'connectors',
+        item: 'JST SM 4-pin pigtail (M+F, 1m)',
+        notes: 'one per cable entry — strip end to inside-enclosure',
+        unit: 1.5,
+      }, ends, cardLabel);
+      addItem('ip67-box', {
+        category: 'connectors',
+        item: 'IP67 junction box (small, clear)',
+        notes: 'one per cable entry — seals the joint outdoors',
+        unit: 2.5,
+      }, ends, cardLabel);
+      addItem('breakout-pcb', {
+        category: 'connectors',
+        item: 'Custom breakout PCB w/ screw terminal',
+        notes: 'rigid backing for strip end (custom JLCPCB)',
+        unit: 0.8,
+      }, ends, cardLabel);
+    }
   }
 
   // Build rows from the aggregated map; annotate notes with which strip(s) the item is for.
@@ -500,13 +524,14 @@ function paintTotals() {
   const fmtUSD = n => formatPrice(n, project.currency);
 
   // Render rows grouped by category, with a section header between groups.
-  const CAT_ORDER = ['strips', 'controllers', 'power', 'psus', 'wiring', 'other'];
+  const CAT_ORDER = ['strips', 'controllers', 'power', 'psus', 'wiring', 'connectors', 'other'];
   const CAT_LABEL = {
     strips: 'LED Strips',
     controllers: 'Controllers',
     power: 'Power Distribution',
     psus: 'Power Supplies',
     wiring: 'Wiring',
+    connectors: 'Connectors & Enclosures',
     other: 'Other',
   };
   const sortedRows = [...rows].sort((a, b) => {
@@ -847,6 +872,57 @@ function projectAsCSV() {
   }
 
   return out;
+}
+
+document.getElementById('copy-wled').addEventListener('click', async () => {
+  const text = projectAsWLEDConfig();
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copy-wled');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  } catch {
+    prompt('Copy this:', text);
+  }
+});
+
+// WLED LED-Preferences blueprint per brain. Paste into WLED's LED Preferences page;
+// match each Bus row to one output, set type and pixel count.
+function projectAsWLEDConfig() {
+  const lines = [];
+  lines.push(`# WLED LED Preferences — ${project.name || 'untitled'}`);
+  lines.push(`# Configure each brain's LED Preferences > Bus list to match below.`);
+  lines.push('');
+  let brainCounter = 0;
+  for (const s of project.strips) {
+    const chip = getChip(s.chipId);
+    if (!chip) continue;
+    const iter = s.iterations || 1;
+    const cardSetup = recommendSetup([{ ...s, iterations: 1 }], computeProjectTotals([{ ...s, iterations: 1 }], getChip), CONTROLLERS, getChip, recommendPSUs, project.prefs);
+    if (!cardSetup?.brain) continue;
+    const cardBrains = assignOutputs([{ ...s, iterations: 1 }], cardSetup.brain, getChip);
+    const colorOrder = chip.channels === 'RGBW' ? 'GRBW'
+      : chip.id === 'apa102' ? 'BGR'
+      : 'GRB';
+    const wledType = chip.channels === 'RGBW' ? 'SK6812 RGBW'
+      : chip.protocol.startsWith('2-wire') ? 'APA102'
+      : chip.id === 'ws2815' ? 'WS281x (12V)'
+      : 'WS281x';
+
+    for (let it = 1; it <= iter; it++) {
+      cardBrains.forEach((outs, brainIdx) => {
+        brainCounter++;
+        lines.push(`## Brain ${brainCounter}: ${cardSetup.brain.name} (Strip ${project.strips.indexOf(s) + 1}, iter ${it}, brain ${brainIdx + 1}/${cardBrains.length})`);
+        outs.forEach((out, outIdx) => {
+          lines.push(`Bus ${outIdx + 1}: type ${wledType}, pixels ${out.totalPixels}, color order ${colorOrder}`);
+        });
+        lines.push('');
+      });
+    }
+  }
+  if (brainCounter === 0) lines.push('(no strips configured)');
+  return lines.join('\n');
 }
 
 document.getElementById('copy-prompt').addEventListener('click', async () => {

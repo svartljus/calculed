@@ -75,6 +75,24 @@ body {
 
 main { display: grid; gap: 0.75rem; }
 
+#how-to {
+  font-size: var(--fs-small);
+  color: var(--muted);
+  margin-bottom: var(--s-2);
+}
+#how-to > summary {
+  cursor: pointer;
+  font-size: var(--fs-mini);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--s-1) 0;
+  user-select: none;
+}
+#how-to[open] > summary { margin-bottom: var(--s-2); }
+#how-to p { margin: 0 0 var(--s-2) 0; }
+#how-to p:last-child { margin-bottom: 0; }
+#how-to strong { color: inherit; font-weight: 700; }
+
 #recommendation {
   border: var(--rule);
   border-radius: 6px;
