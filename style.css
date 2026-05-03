@@ -343,6 +343,40 @@ dialog form p { margin: 0; grid-column: 1 / -1; }
 #footnote summary { cursor: pointer; color: var(--muted); padding: 0.25rem 0; }
 #footnote p { margin: 0.25rem 0 0 1rem; color: var(--muted); }
 
+#references {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: var(--rule);
+  font-size: var(--fs-small);
+}
+#references h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--fs-mini);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+#references dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  column-gap: 1rem;
+  row-gap: 0.4rem;
+}
+#references dt { color: var(--muted); }
+#references dd { margin: 0; }
+#references a { color: inherit; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 2px; }
+#references a:hover { text-decoration-color: currentColor; }
+@media (max-width: 32rem) {
+  #references dl { grid-template-columns: 1fr; }
+  #references dd { padding-bottom: 0.4rem; }
+}
+
+@media print {
+  #references { display: none; }
+}
+
 @media print {
   :root { color-scheme: light; }
   body { padding: 0; max-width: none; padding-bottom: 0; }

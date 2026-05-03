@@ -1,4 +1,28 @@
-import { computePixels } from './calc.js';
+import { computePixels, recommendMeanWellPSUs, priceForMeanWellHLG, formatMeanWellCombo } from './calc.js';
+
+// Premium tier — PixLite Mk3 controllers, kept separate from the main catalog
+// so they don't pollute the default cheap recommendation.
+const PIXLITE_CONTROLLERS = [
+  { id: 'pixlite-4',  name: 'PixLite A4-S Mk3',  outputs: 4,  perOutputMax: 1020, totalMax: 4080,  voltages: [5, 12, 24], priceUSD: 200 },
+  { id: 'pixlite-16', name: 'PixLite E16-S Mk3', outputs: 16, perOutputMax: 1020, totalMax: 16320, voltages: [5, 12, 24], priceUSD: 450 },
+];
+
+// Premium recommendation: PixLite controller + Mean Well HLG IP67 PSU(s).
+export function recommendPremiumSetup(strips, totals, getChip) {
+  if (!totals.totalPixels || !totals.outputCount) return null;
+  const brain = pickFewestUnitsBrain(PIXLITE_CONTROLLERS, strips, totals.totalPixels, getChip);
+  const psuTarget = totals.totalPower_W / 0.8;
+  const psuCombo = recommendMeanWellPSUs(psuTarget);
+  const psuCost = psuCombo.reduce((sum, p) => sum + (priceForMeanWellHLG(p.size) || 0) * p.count, 0);
+  const brainCost = brain ? brain.priceUSD * brain.units : 0;
+  return {
+    brain,
+    psuCombo,
+    psuCost,
+    brainCost,
+    totalCost: brainCost + psuCost,
+  };
+}
 
 // QuinLED-Dig-Octa powerboards. Source: quinled.info/quinled-boards/
 // priceUSD approximate retail (Quinled shop).
@@ -84,8 +108,11 @@ function pickPowerboard(currentNeeded_A, voltage) {
 //   { kind: 'builtin' }                 - controller's onboard fusing is enough; connect PSU directly
 function pickDistribution(brain, totalCurrent_A, voltage, units, forceCentral = false) {
   if (brain?.id === 'digocta') {
-    const board = pickPowerboard(totalCurrent_A / units, voltage);
-    return { kind: 'paired', board, count: units };
+    // Dig-Octa stacks ~2 brains per Power-7-class powerboard (16 ports / 8 outputs/brain).
+    // The Quinled "disco" example pairs 4 brains with 2 powerboards.
+    const boardsNeeded = Math.ceil(units / 2);
+    const board = pickPowerboard(totalCurrent_A / boardsNeeded, voltage);
+    return { kind: 'paired', board, count: boardsNeeded };
   }
   if (forceCentral || units > 1) {
     const board = pickPowerboard(totalCurrent_A, voltage);

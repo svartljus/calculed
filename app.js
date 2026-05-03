@@ -1,7 +1,8 @@
 import { CHIPS, DEFAULT_CHIP_ID, getChip } from './src/chips.js';
 import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRecommendation, computeProjectTotals, recommendPSUs, formatPSUCombo, totalPSUWatts, computeFPS, totalPSUCost, priceForPSU } from './src/calc.js';
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
-import { recommendSetup, outputsForController } from './src/setup.js';
+import { recommendSetup, outputsForController, recommendPremiumSetup } from './src/setup.js';
+import { formatMeanWellCombo } from './src/calc.js';
 
 const STORAGE_KEY = 'calculed:project';
 
@@ -366,7 +367,7 @@ function paintTotals() {
   const grandTotal = rows.reduce((sum, r) => sum + (typeof r.subtotal === 'number' ? r.subtotal : 0), 0);
   $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';
 
-  // Alternatives — other viable controllers (chain-aware output count)
+  // Alternatives — other viable Quinled controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
   const alts = recommendControllers(totals.totalPixels, 4, outputsByCtrl)
     .filter(c => c.id !== setup.brain?.id)
@@ -374,6 +375,16 @@ function paintTotals() {
     .slice(0, 5)
     .join(' · ');
   $rec('recAlts').value = alts || 'none';
+
+  // Premium alternative — PixLite + Mean Well HLG IP67
+  const premium = recommendPremiumSetup(project.strips, totals, getChip);
+  if (premium && premium.brain) {
+    const brainStr = `${premium.brain.units > 1 ? `${premium.brain.units} × ` : ''}${premium.brain.name}`;
+    const psuStr = formatMeanWellCombo(premium.psuCombo);
+    $rec('recPremium').value = `${brainStr} + ${psuStr} ≈ $${Math.round(premium.totalCost)}`;
+  } else {
+    $rec('recPremium').value = 'n/a (project too large for PixLite within 4 units)';
+  }
 
   $rec('recNote').textContent = totals.mixedVoltage
     ? '⚠ Mixed voltages across strips — recommendation assumes a single supply rail; you may need separate PSU rails per voltage.'

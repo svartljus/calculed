@@ -163,6 +163,36 @@ export function totalPSUCost(combo, voltage = 12) {
   return { total, unknown };
 }
 
+// Mean Well HLG series — IP67 LED PSUs (premium tier).
+// Sizes match Mean Well's standard wattage tiers; prices approximate US retail (12V).
+const MEANWELL_HLG_SIZES = [120, 150, 185, 240, 320, 480, 600];
+const MEANWELL_HLG_PRICE_USD = {
+  120: 60, 150: 75, 185: 90, 240: 110, 320: 150, 480: 200, 600: 240,
+};
+
+export function recommendMeanWellPSUs(targetW) {
+  if (!Number.isFinite(targetW) || targetW <= 0) return [];
+  const desc = [...MEANWELL_HLG_SIZES].sort((a, b) => b - a);
+  const max = desc[0];
+  const single = desc.findLast(s => s >= targetW);
+  if (single) return [{ size: single, count: 1 }];
+  const bigCount = Math.floor(targetW / max);
+  const remainder = targetW - bigCount * max;
+  const out = [{ size: max, count: bigCount }];
+  if (remainder > 0) {
+    const topUp = desc.findLast(s => s >= remainder) ?? max;
+    if (topUp === max) out[0].count += 1;
+    else out.push({ size: topUp, count: 1 });
+  }
+  return out;
+}
+
+export function priceForMeanWellHLG(size) { return MEANWELL_HLG_PRICE_USD[size] ?? null; }
+
+export function formatMeanWellCombo(combo) {
+  return combo.map(({ size, count }) => `${count} × HLG-${size}H-12`).join(' + ');
+}
+
 // Greedy pack: as many of the largest as fit, then a single smaller PSU to
 // cover the remainder. Returns [{ size, count }, ...] in descending order.
 export function recommendPSUs(targetW, voltage = 12) {
