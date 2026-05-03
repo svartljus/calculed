@@ -34,23 +34,36 @@ export function outputsForController(strips, controller, getChip) {
   return { outputs, chainsTotal };
 }
 
-function pickBrain(controllers, strips, totalPixels, getChip) {
-  // Smallest single-unit controller that fits both outputs AND pixel cap
-  for (const c of controllers) {
-    const { outputs, chainsTotal } = outputsForController(strips, c, getChip);
-    if (c.outputs >= outputs && capacityOf(c) >= totalPixels) {
-      return { ...c, units: 1, outputsUsed: outputs, chainsTotal };
-    }
+function tryBrain(c, strips, totalPixels, getChip) {
+  const { outputs, chainsTotal } = outputsForController(strips, c, getChip);
+  const cap = capacityOf(c);
+  const units = Math.max(
+    Math.ceil(outputs / c.outputs),
+    Math.ceil(totalPixels / cap),
+  );
+  return { ...c, units, outputsUsed: outputs, chainsTotal };
+}
+
+// Prefer Quinled over PixLite — Quinled is significantly cheaper.
+// Allow up to 4 units of Quinled before falling back to PixLite.
+function pickBrain(controllers, strips, totalPixels, getChip, maxQuinledUnits = 4) {
+  const quinled = controllers.filter(c => !c.id.startsWith('pixlite'));
+  const pixlite = controllers.filter(c => c.id.startsWith('pixlite'));
+
+  // 1. Smallest Quinled (single OR multi-unit up to maxQuinledUnits)
+  for (const c of quinled) {
+    const r = tryBrain(c, strips, totalPixels, getChip);
+    if (r.units <= maxQuinledUnits) return r;
   }
-  // Multi-unit: smallest controller where we can split across N units (≤ 4)
-  for (const c of controllers) {
-    const { outputs, chainsTotal } = outputsForController(strips, c, getChip);
-    const cap = capacityOf(c);
-    const units = Math.max(
-      Math.ceil(outputs / c.outputs),
-      Math.ceil(totalPixels / cap),
-    );
-    if (units <= 4) return { ...c, units, outputsUsed: outputs, chainsTotal };
+  // 2. Fall back to PixLite single-unit
+  for (const c of pixlite) {
+    const r = tryBrain(c, strips, totalPixels, getChip);
+    if (r.units === 1) return r;
+  }
+  // 3. PixLite multi-unit (up to 4)
+  for (const c of pixlite) {
+    const r = tryBrain(c, strips, totalPixels, getChip);
+    if (r.units <= 4) return r;
   }
   return null;
 }
