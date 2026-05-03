@@ -85,7 +85,6 @@ function makeDefaultStrip() {
     quantity: 1,
     iterations: 1,
     injection: 'oneEnd',
-    feedRunMeters: 0.5,
     brightness: 255,
     colorMode: 'white',
     dataRunMeters: 0,
@@ -120,7 +119,6 @@ function renderStrip(strip) {
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="bothEnds"]').checked = strip.injection === 'bothEnds';
-  node.querySelector('input[name="feedRunMeters"]').value = strip.feedRunMeters ?? 0.5;
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
   node.querySelector('input[name="iterations"]').value = strip.iterations || 1;
   node.querySelector('input[name="notes"]').value = strip.notes || '';
@@ -202,7 +200,6 @@ function readStripFromCard(card) {
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     injection: card.querySelector('input[name="bothEnds"]').checked ? 'bothEnds' : 'oneEnd',
-    feedRunMeters: Math.max(0, Number(card.querySelector('input[name="feedRunMeters"]').value) || 0),
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
     iterations: Math.max(1, Number(card.querySelector('input[name="iterations"]').value) || 1),
     notes: card.querySelector('input[name="notes"]').value,
@@ -456,20 +453,21 @@ function paintTotals() {
       }, count * iter, cardLabel);
     }
 
-    // Feed wire — by recommended AWG. Per strip in this card, each feed = `feedRunMeters`.
-    if (card.feedRunMeters > 0) {
+    // Feed wire — assume 0.5 m of cable per feed entry (typical short PSU-to-strip run).
+    // For real installs, treat the total as an order-of-magnitude estimate; buy a spare roll.
+    {
       const chip = getChip(card.chipId);
       if (chip) {
+        const FEED_LENGTH_M = 0.5;
         const inj = computeInjection(card, chip);
         const feedsPerStrip = card.injection === 'bothEnds' ? 2 : 1;
-        const wirePerStrip_m = card.feedRunMeters * feedsPerStrip;
-        const totalWire_m = wirePerStrip_m * (card.quantity || 1) * iter;
+        const totalWire_m = FEED_LENGTH_M * feedsPerStrip * (card.quantity || 1) * iter;
         const feedCurrent = inj.current_A / feedsPerStrip;
         const awg = recommendAWG(feedCurrent);
         addItem(`wire-${awg.balanced.awg}`, {
           category: 'wiring',
           item: `${awg.balanced.awg} AWG / ${awg.balanced.mm2} mm² wire`,
-          notes: `feed wire — ${card.feedRunMeters} m per feed × ${feedsPerStrip} feed${feedsPerStrip > 1 ? 's' : ''}/strip`,
+          notes: `assumes ~${FEED_LENGTH_M} m per feed × ${feedsPerStrip} feed${feedsPerStrip > 1 ? 's' : ''}/strip`,
           unit: null,
           qtyUnit: 'm',
         }, totalWire_m, cardLabel);
@@ -1003,10 +1001,11 @@ function projectAsPrompt() {
     for (const { size, count } of cardSetup.psuCombo) {
       add(`psu-${cardSetup.voltage}-${size}`, `${size} W ${cardSetup.voltage}V PSU`, count * iter, priceForPSU(size, cardSetup.voltage), undefined, 'psus');
     }
-    if (s.feedRunMeters > 0) {
+    {
+      const FEED_LENGTH_M = 0.5;
       const inj = computeInjection(s, chip);
       const feedsPerStrip = s.injection === 'bothEnds' ? 2 : 1;
-      const totalWire_m = s.feedRunMeters * feedsPerStrip * (s.quantity || 1) * iter;
+      const totalWire_m = FEED_LENGTH_M * feedsPerStrip * (s.quantity || 1) * iter;
       const feedCurrent = inj.current_A / feedsPerStrip;
       const awg = recommendAWG(feedCurrent);
       add(`wire-${awg.balanced.awg}`, `${awg.balanced.awg} AWG / ${awg.balanced.mm2} mm² wire`, totalWire_m, null, 'm', 'wiring');
