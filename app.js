@@ -51,7 +51,8 @@ function loadFromStorage() {
       date:   typeof parsed.meta.date   === 'string' ? parsed.meta.date   : '',
     } : { client: '', venue: '', date: '' };
     const currency = FX[parsed.currency] ? parsed.currency : 'USD';
-    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency };
+    const iterations = Math.max(1, Math.min(999, Number(parsed.iterations) || 1));
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency, iterations };
   } catch {
     return null;
   }
@@ -129,12 +130,14 @@ const project = stored ?? {
   version: 1, name: '',
   meta: { client: '', venue: '', date: '' },
   currency: 'USD',
+  iterations: 1,
   prefs: { minDevices: false, centralPower: false },
   strips: [makeDefaultStrip()],
 };
 if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
 if (!project.meta) project.meta = { client: '', venue: '', date: '' };
 if (!project.currency) project.currency = 'USD';
+if (!project.iterations) project.iterations = 1;
 
 const projectNameInput = document.getElementById('project-name');
 projectNameInput.value = project.name || '';
@@ -159,6 +162,14 @@ for (const [key, el] of Object.entries(metaInputs)) {
 currencySelect.value = project.currency;
 currencySelect.addEventListener('change', () => {
   project.currency = currencySelect.value;
+  paintTotals();
+  scheduleSave();
+});
+
+const iterationsInput = document.getElementById('project-iterations');
+iterationsInput.value = project.iterations || 1;
+iterationsInput.addEventListener('input', () => {
+  project.iterations = Math.max(1, Math.min(999, Number(iterationsInput.value) || 1));
   paintTotals();
   scheduleSave();
 });
@@ -304,13 +315,18 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
+  const iter = Math.max(1, project.iterations || 1);
+  const iterSuffix = iter > 1 ? ` × ${iter}` : '';
+
   document.querySelector('output[name="totalPower"]').value   = Number.isFinite(totals.totalPower_W)
-    ? `~${Math.ceil(totals.totalPower_W)}` : '—';
-  document.querySelector('output[name="totalCurrent"]').value = fmt(totals.totalCurrent_A);
-  document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
-  document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
+    ? `~${Math.ceil(totals.totalPower_W * iter)}${iterSuffix && ` (${Math.ceil(totals.totalPower_W)}${iterSuffix})`}`
+    : '—';
+  document.querySelector('output[name="totalCurrent"]').value = fmt(totals.totalCurrent_A * iter) + (iter > 1 ? iterSuffix : '');
+  document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels * iter);
+  document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds * iter);
 
   // AC draw at the wall: account for ~88% PSU efficiency at 230V single-phase.
+  // Per-iteration value (each install pulls from its own circuit).
   const PSU_EFF = 0.88;
   const acDraw_W = totals.totalPower_W / PSU_EFF;
   const acDraw_A = acDraw_W / 230;
@@ -343,49 +359,53 @@ function paintTotals() {
   const rows = [];
   const fmtUSD = n => formatPrice(n, project.currency);
 
-  // Controller
+  // Controller — qty × iterations
   if (setup.brain) {
     const usedOuts = setup.brain.outputsUsed ?? totals.outputCount;
     const chained = usedOuts < totals.outputCount;
     const chainNote = chained ? ` (chained from ${totals.outputCount} strips)` : '';
+    const totalQty = setup.brain.units * iter;
     rows.push({
       item: setup.brain.name,
-      notes: `${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}`,
-      qty: setup.brain.units,
+      notes: `${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}${iter > 1 ? ` × ${iter} iterations` : ''}`,
+      qty: totalQty,
       unit: setup.brain.priceUSD,
-      subtotal: setup.brain.priceUSD * setup.brain.units,
+      subtotal: setup.brain.priceUSD * totalQty,
     });
   }
 
   // Power board / distribution
   const dist = setup.distribution;
   if (dist?.kind === 'paired' && dist.board) {
+    const totalQty = dist.count * iter;
     rows.push({
       item: dist.board.name,
-      notes: `paired with brain — ${dist.board.amps} A, ${dist.board.ports} fused ports`,
-      qty: dist.count,
+      notes: `paired with brain — ${dist.board.amps} A, ${dist.board.ports} fused ports${iter > 1 ? ` × ${iter} iterations` : ''}`,
+      qty: totalQty,
       unit: dist.board.priceUSD,
-      subtotal: dist.board.priceUSD * dist.count,
+      subtotal: dist.board.priceUSD * totalQty,
     });
   } else if (dist?.kind === 'central' && dist.board) {
+    const totalQty = 1 * iter;
     rows.push({
       item: `${dist.board.name} (standalone PDU)`,
-      notes: `${dist.board.amps} A, ${dist.board.ports} fused ports`,
-      qty: 1,
+      notes: `${dist.board.amps} A, ${dist.board.ports} fused ports${iter > 1 ? ` × ${iter} iterations` : ''}`,
+      qty: totalQty,
       unit: dist.board.priceUSD,
-      subtotal: dist.board.priceUSD,
+      subtotal: dist.board.priceUSD * totalQty,
     });
   }
 
-  // PSUs — one row per size
+  // PSUs — one row per size, qty × iterations
   for (const { size, count } of setup.psuCombo) {
     const unit = priceForPSU(size, setup.voltage);
+    const totalQty = count * iter;
     rows.push({
       item: `${size} W ${setup.voltage}V PSU`,
-      notes: setup.voltage <= 24 ? 'Kingneonlux IP67 (waterproof)' : '',
-      qty: count,
+      notes: (setup.voltage <= 24 ? 'Kingneonlux IP67 (waterproof)' : '') + (iter > 1 ? ` × ${iter} iterations` : ''),
+      qty: totalQty,
       unit,
-      subtotal: unit != null ? unit * count : null,
+      subtotal: unit != null ? unit * totalQty : null,
     });
   }
 
@@ -541,6 +561,7 @@ function projectAsCSV() {
   if (project.meta?.client) out += csvRow('# Client', project.meta.client);
   if (project.meta?.venue)  out += csvRow('# Venue',  project.meta.venue);
   if (project.meta?.date)   out += csvRow('# Date',   project.meta.date);
+  if ((project.iterations || 1) > 1) out += csvRow('# Iterations', project.iterations);
   out += '\n';
 
   // Strips
@@ -584,34 +605,41 @@ function projectAsCSV() {
   out += csvRow('Voltage', totals.voltage);
   out += '\n';
 
-  // BOM
+  // BOM — quantities multiplied by iterations
   if (setup) {
+    const iter = Math.max(1, project.iterations || 1);
     out += '# BOM\n';
     out += csvRow('Item', 'Notes', 'Qty', `Unit (${project.currency})`, `Subtotal (${project.currency})`);
     let total = 0;
+    const fxRate = FX[project.currency]?.rate || 1;
     if (setup.brain) {
-      const fx = (setup.brain.priceUSD || 0) * (FX[project.currency]?.rate || 1);
-      const sub = fx * setup.brain.units;
+      const fx = (setup.brain.priceUSD || 0) * fxRate;
+      const qty = setup.brain.units * iter;
+      const sub = fx * qty;
       total += sub;
-      out += csvRow(setup.brain.name, `${setup.brain.outputs} outputs each, ${setup.brain.outputsUsed} used`, setup.brain.units, fx.toFixed(0), sub.toFixed(0));
+      out += csvRow(setup.brain.name, `${setup.brain.outputs} outputs each, ${setup.brain.outputsUsed} used`, qty, fx.toFixed(0), sub.toFixed(0));
     }
     const dist = setup.distribution;
     if (dist?.kind === 'paired' && dist.board) {
-      const fx = (dist.board.priceUSD || 0) * (FX[project.currency]?.rate || 1);
-      const sub = fx * dist.count;
+      const fx = (dist.board.priceUSD || 0) * fxRate;
+      const qty = dist.count * iter;
+      const sub = fx * qty;
       total += sub;
-      out += csvRow(dist.board.name, `paired, ${dist.board.amps} A, ${dist.board.ports} ports`, dist.count, fx.toFixed(0), sub.toFixed(0));
+      out += csvRow(dist.board.name, `paired, ${dist.board.amps} A, ${dist.board.ports} ports`, qty, fx.toFixed(0), sub.toFixed(0));
     } else if (dist?.kind === 'central' && dist.board) {
-      const fx = (dist.board.priceUSD || 0) * (FX[project.currency]?.rate || 1);
-      total += fx;
-      out += csvRow(`${dist.board.name} (PDU)`, `${dist.board.amps} A, ${dist.board.ports} ports`, 1, fx.toFixed(0), fx.toFixed(0));
+      const fx = (dist.board.priceUSD || 0) * fxRate;
+      const qty = 1 * iter;
+      const sub = fx * qty;
+      total += sub;
+      out += csvRow(`${dist.board.name} (PDU)`, `${dist.board.amps} A, ${dist.board.ports} ports`, qty, fx.toFixed(0), sub.toFixed(0));
     }
     for (const { size, count } of setup.psuCombo) {
       const usd = priceForPSU(size, setup.voltage) || 0;
-      const fx = usd * (FX[project.currency]?.rate || 1);
-      const sub = fx * count;
+      const fx = usd * fxRate;
+      const qty = count * iter;
+      const sub = fx * qty;
       total += sub;
-      out += csvRow(`${size} W ${setup.voltage}V PSU`, 'Kingneonlux IP67', count, fx.toFixed(0), sub.toFixed(0));
+      out += csvRow(`${size} W ${setup.voltage}V PSU`, 'Kingneonlux IP67', qty, fx.toFixed(0), sub.toFixed(0));
     }
     out += csvRow('TOTAL', '', '', '', total.toFixed(0));
   }
@@ -644,6 +672,7 @@ function projectAsPrompt() {
     project.meta?.date   && `Date: ${project.meta.date}`,
   ].filter(Boolean);
   if (metaBits.length) lines.push(metaBits.join(' · '));
+  if ((project.iterations || 1) > 1) lines.push(`Iterations: × ${project.iterations}`);
   lines.push('');
   lines.push('## Strips');
   for (const s of project.strips) {
