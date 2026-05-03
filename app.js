@@ -13,11 +13,13 @@ const FX = {
   SEK: { rate: 10.50,  symbol: 'kr', suffix: true  },
   GBP: { rate: 0.79,   symbol: '£',  suffix: false },
 };
-function formatPrice(usd, currency = 'USD') {
+function formatPrice(usd, currency = 'USD', decimals = 0) {
   if (!Number.isFinite(usd)) return '—';
   const fx = FX[currency] || FX.USD;
-  const local = Math.round(usd * fx.rate);
-  return fx.suffix ? `${local} ${fx.symbol}` : `${fx.symbol}${local}`;
+  const factor = 10 ** decimals;
+  const local = Math.round(usd * fx.rate * factor) / factor;
+  const formatted = decimals > 0 ? local.toFixed(decimals) : String(local);
+  return fx.suffix ? `${formatted} ${fx.symbol}` : `${fx.symbol}${formatted}`;
 }
 
 function saveToStorage() {
@@ -82,6 +84,7 @@ function makeDefaultStrip() {
     quantity: 1,
     iterations: 1,
     injection: 'oneEnd',
+    feedRunMeters: 0.5,
     brightness: 255,
     colorMode: 'white',
     dataRunMeters: 0,
@@ -116,6 +119,7 @@ function renderStrip(strip) {
   node.querySelector('select[name="lengthMode"]').value = strip.lengthMode;
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="bothEnds"]').checked = strip.injection === 'bothEnds';
+  node.querySelector('input[name="feedRunMeters"]').value = strip.feedRunMeters ?? 0.5;
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
   node.querySelector('input[name="iterations"]').value = strip.iterations || 1;
   node.querySelector('input[name="notes"]').value = strip.notes || '';
@@ -193,6 +197,7 @@ function readStripFromCard(card) {
     length: Number(card.querySelector('input[name="length"]').value),
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     injection: card.querySelector('input[name="bothEnds"]').checked ? 'bothEnds' : 'oneEnd',
+    feedRunMeters: Math.max(0, Number(card.querySelector('input[name="feedRunMeters"]').value) || 0),
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
     iterations: Math.max(1, Number(card.querySelector('input[name="iterations"]').value) || 1),
     notes: card.querySelector('input[name="notes"]').value,
@@ -307,6 +312,12 @@ function paintCard(card, strip) {
 
   // Voltage class for the subtle background tint
   card.dataset.voltage = String(chip.voltage);
+
+  // Strip number badge — position in stripsList (1-based)
+  const allCards = [...stripsList.querySelectorAll('article')];
+  const idx = allCards.indexOf(card);
+  const numEl = card.querySelector('.strip-num');
+  if (numEl) numEl.textContent = idx >= 0 ? String(idx + 1) : '';
 }
 
 function paintTotals() {
@@ -336,6 +347,7 @@ function paintTotals() {
   document.querySelector('output[name="acDraw"]').value =
     Number.isFinite(acDraw_A) ? `${acIndicator}${fmt(acDraw_A)}` : '—';
   document.querySelector('[data-info-ac]').title = Number.isFinite(acDraw_A) ? [
+    `Per single install (each iteration runs on its own circuit).`,
     `~${Math.ceil(acDraw_W)} W from the wall (${Math.round(PSU_EFF * 100)}% PSU efficiency)`,
     `${fmt(acDraw_A)} A @ 230V single-phase`,
     acDraw_A > 24 ? '⚠ exceeds 16A circuit — split across two circuits or use 32A' :
@@ -434,6 +446,26 @@ function paintTotals() {
         unit,
       }, count * iter, cardLabel);
     }
+
+    // Feed wire — by recommended AWG. Per strip in this card, each feed = `feedRunMeters`.
+    // Both-ends adds a second feed.
+    if (card.feedRunMeters > 0) {
+      const chip = getChip(card.chipId);
+      if (chip) {
+        const inj = computeInjection(card, chip);
+        const feedsPerStrip = card.injection === 'bothEnds' ? 2 : 1;
+        const wirePerStrip_m = card.feedRunMeters * feedsPerStrip;
+        const totalWire_m = wirePerStrip_m * (card.quantity || 1) * iter;
+        const feedCurrent = inj.current_A / feedsPerStrip;
+        const awg = recommendAWG(feedCurrent);
+        addItem(`wire-${awg.balanced.awg}`, {
+          item: `${awg.balanced.awg} AWG / ${awg.balanced.mm2} mm² wire`,
+          notes: `feed wire — ${card.feedRunMeters} m per feed × ${feedsPerStrip} feed${feedsPerStrip > 1 ? 's' : ''}/strip`,
+          unit: null,   // wire pricing varies wildly; skip the cost
+          qtyUnit: 'm',
+        }, totalWire_m, cardLabel);
+      }
+    }
   }
 
   // Build rows from the aggregated map; annotate notes with which strip(s) the item is for
@@ -479,6 +511,13 @@ function paintTotals() {
 
   const grandTotal = rows.reduce((sum, r) => sum + (typeof r.subtotal === 'number' ? r.subtotal : 0), 0);
   $rec('bomTotal').value = grandTotal > 0 ? `${fmtUSD(grandTotal)} (list, ex. shipping)` : '—';
+
+  // Cost per pixel — quick comparability metric across projects
+  const cpp = totals.totalPixels > 0 && grandTotal > 0
+    ? grandTotal / totals.totalPixels
+    : null;
+  document.querySelector('output[name="costPerPixel"]').value =
+    cpp != null ? formatPrice(cpp, project.currency, 2) : '—';
 
   // Alternatives — other viable Quinled controllers (chain-aware output count)
   const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;

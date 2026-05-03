@@ -46,6 +46,7 @@
         <div><dt>AC @ 230V</dt> <dd><output name="acDraw">0</output> A <button type="button" class="info" data-info-ac title="">?</button></dd></div>
         <div><dt>Pixels</dt>    <dd><output name="totalPixels">0</output></dd></div>
         <div><dt>LEDs</dt>      <dd><output name="totalLeds">0</output></dd></div>
+        <div><dt>Cost / pixel</dt> <dd><output name="costPerPixel">—</output></dd></div>
       </dl>
       <table id="bom">
         <thead>
@@ -131,6 +132,7 @@
     <li>
       <article draggable="true">
         <fieldset class="strip-config">
+          <span class="strip-num" aria-hidden="true"></span>
           <label>Iter <input type="number" name="iterations" min="1" max="999" value="1"></label>
           <label>Qty <input type="number" name="quantity" min="1" max="999" value="1"></label>
           <label>Chip <select name="chipId"></select></label>
@@ -153,6 +155,7 @@
           </label>
           <label><input type="checkbox" name="doubled" checked> Doubled</label>
           <label><input type="checkbox" name="bothEnds"> Both ends</label>
+          <label>Feed run <input type="number" name="feedRunMeters" step="0.1" min="0" value="0.5"> m</label>
           <div class="field">
             <span class="field-label">Brightness</span>
             <div class="pills" role="radiogroup" aria-label="Max brightness">
