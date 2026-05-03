@@ -130,65 +130,52 @@ function paintCard(card, strip) {
   const data = dataRecommendation(strip, chip);
 
   const q = strip.quantity || 1;
+  const eachNote = q > 1 ? ` (per strip, × ${q})` : '';
   const $ = name => card.querySelector(`output[name="${name}"]`);
   $('pixels').value   = intOrDash(draw.pixels * q);
   $('ledCount').value = intOrDash(draw.ledCount * q);
   $('current').value  = fmt(draw.current_A * q);
-  $('power').value    = fmt(draw.power_W * q, 1);
+  const actualPower = draw.power_W * q;
+  $('power').value = Number.isFinite(actualPower) ? `~${Math.ceil(actualPower)}` : '—';
+  card.querySelector('[data-info-power]').title =
+    Number.isFinite(actualPower) ? `Actual: ${fmt(actualPower, 2)} W` : '';
 
-  // Drop summary — lead with what happens with no power injection,
-  // then offer the optional injection plan to reduce drop.
+  // Drop — short value inline, full math in tooltip
   const oneFeedDropPct = (inj.vDrop_singleFeed_V / chip.voltage) * 100;
   const tolerancePct = strip.maxDropPercent;
-  let summary;
+  $('dropShort').value = Number.isFinite(oneFeedDropPct) ? `${fmt(oneFeedDropPct)}%` : '—';
+  let dropTip;
   if (!Number.isFinite(oneFeedDropPct)) {
-    summary = '—';
+    dropTip = '—';
   } else if (inj.nFeeds === 1) {
-    summary = `${fmt(oneFeedDropPct)}% drop end-to-end with one feed — no injection needed`;
+    dropTip = `${fmt(oneFeedDropPct)}% drop end-to-end with one feed — no injection needed`;
   } else {
-    summary = `${fmt(oneFeedDropPct)}% drop with one feed · ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m for ≤${tolerancePct}%`;
+    dropTip = `${fmt(oneFeedDropPct)}% drop with one feed.\nFor ≤${tolerancePct}%: ${inj.nFeeds} feeds every ${fmt(inj.injectEvery_m)} m.`;
   }
-  if (q > 1) summary += ` · per strip (× ${q})`;
-  $('injectionSummary').value = summary;
+  dropTip += eachNote;
+  card.querySelector('[data-info-drop]').title = dropTip;
 
-  // Three tiers for AWG and fuse
-  const awgStr = t => `${t.awg}${t.overCapacity ? '!' : ''}`;
-  $('awgMin').value      = awgStr(awg.min);
-  $('awgBalanced').value = awgStr(awg.balanced);
-  $('awgSolid').value    = awgStr(awg.solid);
-  $('mm2Min').value      = fmt(awg.min.mm2);
-  $('mm2Balanced').value = fmt(awg.balanced.mm2);
-  $('mm2Solid').value    = fmt(awg.solid.mm2);
-  $('fuseMin').value      = fmt(fuse.min);
-  $('fuseBalanced').value = fmt(fuse.balanced);
-  $('fuseSolid').value    = fmt(fuse.solid);
+  // Wire — show min AWG inline; tooltip with all three tiers + mm²
+  const wireFmt = t => `${t.awg} AWG (${fmt(t.mm2)} mm²)${t.overCapacity ? ' — over capacity!' : ''}`;
+  $('wireShort').value = wireFmt(awg.min);
+  card.querySelector('[data-info-wire]').title =
+    `Min:      ${wireFmt(awg.min)}\nBalanced: ${wireFmt(awg.balanced)}\nSolid:    ${wireFmt(awg.solid)}` + eachNote;
 
-  // Collapse tiered display when all three tiers produce the same value.
-  const setCollapsed = (sel, on) => {
-    const el = card.querySelector(sel);
-    if (!el) return;
-    if (on) el.dataset.collapsed = '';
-    else delete el.dataset.collapsed;
-  };
-  const wireSame = awg.min.awg === awg.balanced.awg && awg.balanced.awg === awg.solid.awg;
-  const fuseSame = fuse.min === fuse.balanced && fuse.balanced === fuse.solid;
-  setCollapsed('[data-tiered="wire"]', wireSame);
-  setCollapsed('[data-tiered="fuse"]', fuseSame);
-
-  // "each" suffix on per-strip recommendations when quantity > 1
-  const eachLabel = q > 1 ? `each (× ${q})` : '';
-  card.querySelectorAll('.each-suffix').forEach(el => el.textContent = eachLabel);
+  // Fuse — show min inline; tooltip with all three tiers
+  $('fuseShort').value = fmt(fuse.min);
+  card.querySelector('[data-info-fuse]').title =
+    `Min:      ${fmt(fuse.min)} A\nBalanced: ${fmt(fuse.balanced)} A\nSolid:    ${fmt(fuse.solid)} A` + eachNote;
 
   // Data — short label + tooltip
   const shortLabel = chip.protocol + (data.dataRunWarning ? ' ⚠' : '');
-  const tooltip = [
+  const dataTip = [
     `Protocol: ${chip.protocol}`,
     `Level shifter: ${data.levelShifter}` + (data.note ? ` (${data.note})` : ''),
     `Series resistor: ${data.resistor}`,
     data.dataRunWarning ? `⚠ data wire > 3 m — keep it short or buffer the signal` : '',
   ].filter(Boolean).join('\n');
   $('dataShort').value = shortLabel;
-  card.querySelector('[data-info]').title = tooltip;
+  card.querySelector('[data-info]').title = dataTip;
 }
 
 function paintTotals() {

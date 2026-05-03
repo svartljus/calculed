@@ -89,29 +89,11 @@
             <div><dt>Pixels</dt>  <dd><output name="pixels">0</output></dd></div>
             <div><dt>LEDs</dt>    <dd><output name="ledCount">0</output></dd></div>
             <div><dt>Current</dt> <dd><output name="current">0</output> A</dd></div>
-            <div><dt>Power</dt>   <dd><output name="power">0</output> W</dd></div>
+            <div><dt>Power</dt>   <dd><output name="power">0</output> W <button type="button" class="info" data-info-power title="">?</button></dd></div>
+            <div><dt>Drop</dt>    <dd><output name="dropShort">—</output> <button type="button" class="info" data-info-drop title="">?</button></dd></div>
+            <div><dt>Wire</dt>    <dd><output name="wireShort">—</output> <button type="button" class="info" data-info-wire title="">?</button></dd></div>
+            <div><dt>Fuse</dt>    <dd><output name="fuseShort">—</output> A <button type="button" class="info" data-info-fuse title="">?</button></dd></div>
             <div><dt>Data</dt>    <dd><output name="dataShort">—</output> <button type="button" class="info" data-info title="">?</button></dd></div>
-          </dl>
-          <dl class="details">
-            <div>
-              <dt>Drop</dt>
-              <dd><output name="injectionSummary">—</output></dd>
-            </div>
-            <div>
-              <dt>Wire <span class="tier-hint" title="Three options: bare-minimum gauge / standard 1.25× safety / extra headroom for sustained max brightness">min · balanced · solid</span></dt>
-              <dd class="tiered" data-tiered="wire">
-                <output name="awgMin">—</output><span class="sep"> · </span><strong><output name="awgBalanced">—</output></strong><span class="sep"> · </span><output name="awgSolid">—</output> AWG
-                <span class="aux">(<output name="mm2Min">—</output><span class="sep"> · </span><strong><output name="mm2Balanced">—</output></strong><span class="sep"> · </span><output name="mm2Solid">—</output> mm²)</span>
-                <span class="each-suffix" data-each="wire"></span>
-              </dd>
-            </div>
-            <div>
-              <dt>Fuse</dt>
-              <dd class="tiered" data-tiered="fuse">
-                <output name="fuseMin">—</output><span class="sep"> · </span><strong><output name="fuseBalanced">—</output></strong><span class="sep"> · </span><output name="fuseSolid">—</output> A
-                <span class="each-suffix" data-each="fuse"></span>
-              </dd>
-            </div>
           </dl>
         </section>
       </article>
