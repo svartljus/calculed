@@ -131,16 +131,19 @@ function renderStrip(strip) {
   return node;
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 const stored = loadFromStorage();
 const project = stored ?? {
   version: 1, name: '',
-  meta: { client: '', venue: '', date: '' },
+  meta: { client: '', venue: '', date: today() },
   currency: 'USD',
   prefs: { minDevices: false, centralPower: false },
   strips: [makeDefaultStrip()],
 };
 if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
-if (!project.meta) project.meta = { client: '', venue: '', date: '' };
+if (!project.meta) project.meta = { client: '', venue: '', date: today() };
+if (!project.meta.date) project.meta.date = today();
 if (!project.currency) project.currency = 'USD';
 if (!project.stock) project.stock = {};
 
