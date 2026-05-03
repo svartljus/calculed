@@ -31,32 +31,22 @@
       <button type="button" id="add-strip">+ Add strip</button>
     </form>
 
-    <footer id="totals">
-      <div class="totals-row">
-        <dl>
-          <dt>Total power</dt> <dd><output name="totalPower">0</output> W</dd>
-          <dt>DC current</dt>  <dd><output name="totalCurrent">0</output> A</dd>
-          <dt>AC draw @ 230V</dt> <dd><output name="acDraw">0</output> A <button type="button" class="info" data-info-ac title="">?</button></dd>
-          <dt>Pixels</dt>      <dd><output name="totalPixels">0</output></dd>
-          <dt>LEDs</dt>        <dd><output name="totalLeds">0</output></dd>
-        </dl>
-        <div class="totals-actions">
-          <button type="button" id="copy-prompt">Copy as prompt</button>
-          <button type="button" id="export-csv">CSV</button>
-          <button type="button" id="export-json">JSON</button>
-          <button type="button" id="print">Print BOM</button>
-        </div>
-      </div>
-    </footer>
-
     <section id="recommendation">
       <header class="rec-header">
-        <h2>Recommended setup</h2>
+        <h2>Project summary</h2>
         <div class="rec-prefs">
           <label><input type="checkbox" id="pref-min-devices"> Fewer devices</label>
           <label><input type="checkbox" id="pref-central-power"> Centralize power</label>
         </div>
       </header>
+
+      <dl class="summary-stats">
+        <div><dt>Power</dt>     <dd><output name="totalPower">0</output> W</dd></div>
+        <div><dt>DC</dt>        <dd><output name="totalCurrent">0</output> A</dd></div>
+        <div><dt>AC @ 230V</dt> <dd><output name="acDraw">0</output> A <button type="button" class="info" data-info-ac title="">?</button></dd></div>
+        <div><dt>Pixels</dt>    <dd><output name="totalPixels">0</output></dd></div>
+        <div><dt>LEDs</dt>      <dd><output name="totalLeds">0</output></dd></div>
+      </dl>
       <table id="bom">
         <thead>
           <tr><th>Item</th><th>Notes</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Subtotal</th></tr>
@@ -78,6 +68,13 @@
           <tbody></tbody>
         </table>
       </details>
+
+      <footer class="rec-actions">
+        <button type="button" id="copy-prompt">Copy as prompt</button>
+        <button type="button" id="export-csv">CSV</button>
+        <button type="button" id="export-json">JSON</button>
+        <button type="button" id="print">Print BOM</button>
+      </footer>
       <p class="rec-note"><output name="recNote"></output></p>
     </section>
 

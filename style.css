@@ -18,7 +18,7 @@ input, select, button, textarea, output { font-family: inherit; }
 body {
   margin: 0;
   padding: 1rem clamp(1rem, 3vw, 2rem);
-  padding-bottom: 5rem;
+  padding-bottom: 2rem;
 }
 
 main { display: grid; gap: 0.75rem; }
@@ -122,7 +122,6 @@ main { display: grid; gap: 0.75rem; }
 #output-table tbody tr:not(:last-child) td { border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent); }
 #output-table td:first-child { font-weight: 600; }
 
-.totals-actions { display: flex; gap: 0.5rem; }
 
 #project-header { padding: 0.25rem 0 0.5rem; }
 #project-name {
@@ -324,47 +323,42 @@ form#project > button {
   margin-right: 0.25rem;
 }
 
-#totals {
-  position: sticky;
-  bottom: 0;
-  background: Canvas;
-  border-top: var(--rule);
-  padding: 0.75rem clamp(1rem, 3vw, 2rem);
+/* Summary stats — top of the recommendation block */
+.summary-stats {
+  margin: 0 0 1rem 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-inline: calc(clamp(1rem, 3vw, 2rem) * -1);
-  backdrop-filter: blur(6px);
-}
-#totals .totals-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.5rem;
   flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: var(--rule);
 }
-#totals .controllers-row {
-  font-size: var(--fs-small);
+.summary-stats > div { display: flex; flex-direction: column; gap: 0.1rem; }
+.summary-stats dt {
+  margin: 0;
   color: var(--muted);
-  display: flex;
-  gap: 0.5rem;
-  align-items: baseline;
-  flex-wrap: wrap;
-}
-#totals .totals-label {
   font-size: var(--fs-mini);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-#totals output[name="controllers"] { color: inherit; }
-#totals .hero { display: flex; flex-direction: column; gap: 0.1rem; }
-#totals .hero-label { color: var(--muted); font-size: var(--fs-mini); text-transform: uppercase; letter-spacing: 0.08em; }
-#totals .hero-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-#totals .hero-sub { color: var(--muted); font-size: var(--fs-mini); font-variant-numeric: tabular-nums; }
-#totals dl { margin: 0; display: flex; gap: 0; align-items: baseline; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
-#totals dt { color: var(--muted); font-size: var(--fs-mini); text-transform: uppercase; letter-spacing: 0.06em; margin-right: 0.4rem; }
-#totals dd { margin: 0; margin-right: 1.5rem; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 1em; }
-#totals dd:last-of-type { margin-right: 0; }
+.summary-stats dd {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+/* Action bar at the bottom of the recommendation block */
+.rec-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: var(--rule);
+}
 
 button {
   font: inherit;
