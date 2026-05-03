@@ -365,17 +365,32 @@ function paintTotals() {
   }
 
   // Aggregate hardware across all per-card setups, summing identical models.
-  const aggregated = new Map();   // key → { item, notes, qty, unit, subtotal, contrib: [{cardIdx, iter}] }
+  const aggregated = new Map();   // key → { item, notes, qty, unit, subtotal, contrib }
   const addItem = (key, base, qty, contrib) => {
     const existing = aggregated.get(key);
     if (existing) {
       existing.qty += qty;
       if (existing.unit != null && base.unit != null) existing.subtotal = (existing.subtotal || 0) + base.unit * qty;
-      existing.contrib.push(contrib);
+      if (contrib && !existing.contrib.includes(contrib)) existing.contrib.push(contrib);
     } else {
-      aggregated.set(key, { ...base, qty, subtotal: base.unit != null ? base.unit * qty : null, contrib: [contrib] });
+      aggregated.set(key, { ...base, qty, subtotal: base.unit != null ? base.unit * qty : null, contrib: contrib ? [contrib] : [] });
     }
   };
+
+  // LED strips — one aggregated row per (chip, density) across all cards × iter
+  for (const { card, cardIdx, iter } of perCardSetups) {
+    const chip = getChip(card.chipId);
+    if (!chip || !chip.pricePerMeterUSD) continue;
+    const visibleM = card.lengthMode === 'meters' ? card.length : card.length / card.density;
+    const physicalM = visibleM * (card.runs || 1);   // doubled = 2× physical strip per visible m
+    const totalM = physicalM * (card.quantity || 1) * iter;
+    addItem(`strip-${chip.id}-${card.density}`, {
+      item: `${chip.name} strip ${card.density}/m`,
+      notes: `${physicalM.toFixed(1)} m physical × ${card.quantity || 1} qty${iter > 1 ? ` × ${iter} iter` : ''}`,
+      unit: chip.pricePerMeterUSD,
+      qtyUnit: 'm',
+    }, totalM, `Strip ${cardIdx + 1}`);
+  }
 
   for (const { card, cardIdx, iter, setup } of perCardSetups) {
     if (!setup) continue;
@@ -436,11 +451,17 @@ function paintTotals() {
   bomBody.replaceChildren(...rows.map(r => {
     const tr = document.createElement('tr');
     if (r.muted) tr.classList.add('muted');
+    const qtyDisplay = r.qty === '' ? '' :
+      (r.qtyUnit === 'm' ? `${Math.round(r.qty)} m` : r.qty);
+    const unitDisplay = r.unit === '' ? '' :
+      (r.unit != null
+        ? (r.qtyUnit === 'm' ? `${fmtUSD(r.unit)}/m` : fmtUSD(r.unit))
+        : '—');
     tr.innerHTML = `
       <td>${r.item}</td>
       <td>${r.notes || ''}</td>
-      <td class="num">${r.qty === '' ? '' : r.qty}</td>
-      <td class="num">${r.unit === '' ? '' : (r.unit != null ? fmtUSD(r.unit) : '—')}</td>
+      <td class="num">${qtyDisplay}</td>
+      <td class="num">${unitDisplay}</td>
       <td class="num">${r.subtotal === '' ? '' : (r.subtotal != null ? fmtUSD(r.subtotal) : '—')}</td>
     `;
     return tr;
@@ -704,37 +725,43 @@ function projectAsPrompt() {
   lines.push(`- ${totals.totalPixels} pixels · ${totals.totalLeds} LEDs · ${totals.totalCurrent_A.toFixed(1)} A · ${Math.ceil(totals.totalPower_W)} W`);
   lines.push(`- ${totals.outputCount} outputs needed · ${totals.voltage}V${totals.mixedVoltage ? ' (mixed!)' : ''}`);
   lines.push('');
-  if (setup) {
-    lines.push('## Calculator recommendation');
-    if (setup.brain) {
-      const usedOuts = setup.brain.outputsUsed ?? totals.outputCount;
-      const chained = usedOuts < totals.outputCount;
-      const chainNote = chained ? ` (chained ${totals.outputCount} strips into ${usedOuts} outputs)` : '';
-      lines.push(`- Controller: ${setup.brain.name}${setup.brain.units > 1 ? ` × ${setup.brain.units}` : ''} — ${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}`);
+  // Per-card hardware aggregation + strip costs (same model as the BOM display)
+  lines.push('## Calculator recommendation (BOM)');
+  const agg = new Map();
+  const add = (key, label, qty, unit, qtyUnit) => {
+    const ex = agg.get(key);
+    if (ex) { ex.qty += qty; ex.subtotal += (unit || 0) * qty; }
+    else agg.set(key, { label, qty, unit, subtotal: (unit || 0) * qty, qtyUnit });
+  };
+  for (const s of project.strips) {
+    const chip = getChip(s.chipId);
+    if (!chip) continue;
+    const iter = s.iterations || 1;
+    if (chip.pricePerMeterUSD) {
+      const visibleM = s.lengthMode === 'meters' ? s.length : s.length / s.density;
+      const physicalM = visibleM * (s.runs || 1);
+      const totalM = physicalM * (s.quantity || 1) * iter;
+      add(`strip-${chip.id}-${s.density}`, `${chip.name} strip ${s.density}/m`, totalM, chip.pricePerMeterUSD, 'm');
     }
-    const dist = setup.distribution;
-    if (dist?.kind === 'paired' && dist.board) {
-      lines.push(`- Power board: ${dist.board.name} × ${dist.count} (${dist.board.amps} A, ${dist.board.ports} fused ports — paired with brain)`);
-    } else if (dist?.kind === 'central' && dist.board) {
-      lines.push(`- Power distribution: ${dist.board.name} standalone (${dist.board.amps} A, ${dist.board.ports} fused ports) — or 1 PSU per brain`);
-    } else if (dist?.kind === 'builtin') {
-      lines.push(`- Power distribution: built-in to controller, connect PSU directly`);
+    const cardSetup = recommendSetup([{ ...s, iterations: 1 }], computeProjectTotals([{ ...s, iterations: 1 }], getChip), CONTROLLERS, getChip, recommendPSUs, project.prefs);
+    if (!cardSetup) continue;
+    if (cardSetup.brain) add(`brain-${cardSetup.brain.id}`, cardSetup.brain.name, cardSetup.brain.units * iter, cardSetup.brain.priceUSD);
+    const dist = cardSetup.distribution;
+    if (dist?.kind === 'paired' && dist.board) add(`pb-${dist.board.id}`, dist.board.name, dist.count * iter, dist.board.priceUSD);
+    else if (dist?.kind === 'central' && dist.board) add(`pb-${dist.board.id}-pdu`, `${dist.board.name} (PDU)`, 1 * iter, dist.board.priceUSD);
+    for (const { size, count } of cardSetup.psuCombo) {
+      add(`psu-${cardSetup.voltage}-${size}`, `${size} W ${cardSetup.voltage}V PSU`, count * iter, priceForPSU(size, cardSetup.voltage));
     }
-    if (setup.psuCombo.length) lines.push(`- PSUs: ${formatPSUCombo(setup.psuCombo)} (${setup.voltage}V)`);
-
-    // Cost rollup
-    const psuCost = totalPSUCost(setup.psuCombo, setup.voltage);
-    const totalCost = (setup.cost?.controllerSubtotal ?? 0) + psuCost.total;
-    if (totalCost > 0) lines.push(`- Estimated cost: ${formatPrice(totalCost, project.currency)} (list, ex. shipping)`);
-
-    // Alternatives — other viable controllers, chain-aware
-    const outputsByCtrl = c => outputsForController(project.strips, c, getChip).outputs;
-    const alts = recommendControllers(totals.totalPixels, 4, outputsByCtrl)
-      .filter(c => c.id !== setup.brain?.id)
-      .map(c => `${c.name}${c.unitsNeeded > 1 ? ` × ${c.unitsNeeded}` : ''}`)
-      .join(', ');
-    if (alts) lines.push(`- Alternatives: ${alts}`);
   }
+  let grandTotal = 0;
+  for (const { label, qty, unit, subtotal, qtyUnit } of agg.values()) {
+    const qtyStr = qtyUnit === 'm' ? `${Math.round(qty)} m` : `${qty}`;
+    const unitStr = unit != null ? `${formatPrice(unit, project.currency)}${qtyUnit ? `/${qtyUnit}` : ''}` : '—';
+    const subStr = subtotal != null ? formatPrice(subtotal, project.currency) : '—';
+    lines.push(`- ${label} — qty ${qtyStr}, unit ${unitStr}, subtotal ${subStr}`);
+    grandTotal += subtotal || 0;
+  }
+  if (grandTotal > 0) lines.push(`- **Estimated total: ${formatPrice(grandTotal, project.currency)}** (list, ex. shipping)`);
   lines.push('');
   lines.push('Please sanity-check this setup and suggest any optimisations or things I might be missing.');
   return lines.join('\n');

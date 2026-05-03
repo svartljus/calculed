@@ -197,6 +197,7 @@ article {
   padding: 0.6rem 0.9rem 0.75rem;
   display: grid;
   gap: 0.5rem;
+  background: color-mix(in srgb, currentColor 2%, transparent);
   transition: border-left-color 0.15s;
 }
 article[data-status="ok"]   { border-left-color: #16a34a; border-left-width: 4px; }
