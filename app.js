@@ -51,8 +51,7 @@ function loadFromStorage() {
       date:   typeof parsed.meta.date   === 'string' ? parsed.meta.date   : '',
     } : { client: '', venue: '', date: '' };
     const currency = FX[parsed.currency] ? parsed.currency : 'USD';
-    const iterations = Math.max(1, Math.min(999, Number(parsed.iterations) || 1));
-    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency, iterations };
+    return { version: 1, strips, name: typeof parsed.name === 'string' ? parsed.name : '', prefs, meta, currency };
   } catch {
     return null;
   }
@@ -81,6 +80,7 @@ function makeDefaultStrip() {
     length: 5,
     runs: 2,
     quantity: 1,
+    iterations: 1,
     injection: 'oneEnd',
     brightness: 255,
     colorMode: 'white',
@@ -117,6 +117,7 @@ function renderStrip(strip) {
   node.querySelector('input[name="doubled"]').checked = strip.runs === 2;
   node.querySelector('input[name="bothEnds"]').checked = strip.injection === 'bothEnds';
   node.querySelector('input[name="quantity"]').value = strip.quantity || 1;
+  node.querySelector('input[name="iterations"]').value = strip.iterations || 1;
   node.querySelector('input[name="notes"]').value = strip.notes || '';
   const brightnessRadio = node.querySelector(`input[name="brightness-${strip.id}"][value="${strip.brightness}"]`);
   if (brightnessRadio) brightnessRadio.checked = true;
@@ -130,14 +131,12 @@ const project = stored ?? {
   version: 1, name: '',
   meta: { client: '', venue: '', date: '' },
   currency: 'USD',
-  iterations: 1,
   prefs: { minDevices: false, centralPower: false },
   strips: [makeDefaultStrip()],
 };
 if (!project.prefs) project.prefs = { minDevices: false, centralPower: false };
 if (!project.meta) project.meta = { client: '', venue: '', date: '' };
 if (!project.currency) project.currency = 'USD';
-if (!project.iterations) project.iterations = 1;
 
 const projectNameInput = document.getElementById('project-name');
 projectNameInput.value = project.name || '';
@@ -166,13 +165,6 @@ currencySelect.addEventListener('change', () => {
   scheduleSave();
 });
 
-const iterationsInput = document.getElementById('project-iterations');
-iterationsInput.value = project.iterations || 1;
-iterationsInput.addEventListener('input', () => {
-  project.iterations = Math.max(1, Math.min(999, Number(iterationsInput.value) || 1));
-  paintTotals();
-  scheduleSave();
-});
 
 const prefMinDevices   = document.getElementById('pref-min-devices');
 const prefCentralPower = document.getElementById('pref-central-power');
@@ -202,6 +194,7 @@ function readStripFromCard(card) {
     runs: card.querySelector('input[name="doubled"]').checked ? 2 : 1,
     injection: card.querySelector('input[name="bothEnds"]').checked ? 'bothEnds' : 'oneEnd',
     quantity: Math.max(1, Number(card.querySelector('input[name="quantity"]').value) || 1),
+    iterations: Math.max(1, Number(card.querySelector('input[name="iterations"]').value) || 1),
     notes: card.querySelector('input[name="notes"]').value,
     brightness: Number(card.querySelector('input[name^="brightness-"]:checked')?.value ?? 255),
     colorMode: card.querySelector('select[name="colorMode"]').value,
@@ -315,20 +308,25 @@ function paintCard(card, strip) {
 
 function paintTotals() {
   const totals = computeProjectTotals(project.strips, getChip);
-  const iter = Math.max(1, project.iterations || 1);
-  const iterSuffix = iter > 1 ? ` × ${iter}` : '';
 
   document.querySelector('output[name="totalPower"]').value   = Number.isFinite(totals.totalPower_W)
-    ? `~${Math.ceil(totals.totalPower_W * iter)}${iterSuffix && ` (${Math.ceil(totals.totalPower_W)}${iterSuffix})`}`
-    : '—';
-  document.querySelector('output[name="totalCurrent"]').value = fmt(totals.totalCurrent_A * iter) + (iter > 1 ? iterSuffix : '');
-  document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels * iter);
-  document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds * iter);
+    ? `~${Math.ceil(totals.totalPower_W)}` : '—';
+  document.querySelector('output[name="totalCurrent"]').value = fmt(totals.totalCurrent_A);
+  document.querySelector('output[name="totalPixels"]').value  = intOrDash(totals.totalPixels);
+  document.querySelector('output[name="totalLeds"]').value    = intOrDash(totals.totalLeds);
 
-  // AC draw at the wall: account for ~88% PSU efficiency at 230V single-phase.
-  // Per-iteration value (each install pulls from its own circuit).
+  // AC draw — per-install (each iteration is wired separately on its own circuit).
+  // Compute the LARGEST single iteration's draw, since each install's circuit must handle that one.
   const PSU_EFF = 0.88;
-  const acDraw_W = totals.totalPower_W / PSU_EFF;
+  let perInstallMaxPower_W = 0;
+  for (const s of project.strips) {
+    const chip = getChip(s.chipId);
+    if (!chip) continue;
+    const r = computeStripDraw(s, chip);
+    const oneInstallPower = r.power_W * (s.quantity || 1);
+    if (oneInstallPower > perInstallMaxPower_W) perInstallMaxPower_W = oneInstallPower;
+  }
+  const acDraw_W = perInstallMaxPower_W / PSU_EFF;
   const acDraw_A = acDraw_W / 230;
   let acIndicator = '';
   if (acDraw_A > 12) acIndicator = '⚠ ';
@@ -343,11 +341,22 @@ function paintTotals() {
       'Comfortably fits any standard circuit',
   ].join('\n') : '';
 
+  // Per-card setups — each strip card is its own independent install,
+  // with its own iter multiplier on hardware.
+  const perCardSetups = project.strips.map((s, idx) => {
+    const cardTotals = computeProjectTotals([{ ...s, iterations: 1 }], getChip);
+    const cardSetup = recommendSetup([{ ...s, iterations: 1 }], cardTotals, CONTROLLERS, getChip, recommendPSUs, project.prefs);
+    return { card: s, cardIdx: idx, iter: s.iterations || 1, setup: cardSetup, cardTotals };
+  });
+
+  // A "combined" setup is still used for premium alt comparison + alternatives line
+  // (those are about overall project scale, not per-iteration buying).
   const setup = recommendSetup(project.strips, totals, CONTROLLERS, getChip, recommendPSUs, project.prefs);
+
   const $rec = name => document.querySelector(`output[name="${name}"]`);
   const bomBody = document.querySelector('#bom tbody');
 
-  if (!setup || totals.totalPixels === 0) {
+  if (totals.totalPixels === 0 || perCardSetups.every(r => !r.setup)) {
     bomBody.replaceChildren();
     $rec('bomTotal').value = '—';
     $rec('recAlts').value = '—';
@@ -355,73 +364,73 @@ function paintTotals() {
     return;
   }
 
-  // Build BOM rows
-  const rows = [];
-  const fmtUSD = n => formatPrice(n, project.currency);
+  // Aggregate hardware across all per-card setups, summing identical models.
+  const aggregated = new Map();   // key → { item, notes, qty, unit, subtotal, contrib: [{cardIdx, iter}] }
+  const addItem = (key, base, qty, contrib) => {
+    const existing = aggregated.get(key);
+    if (existing) {
+      existing.qty += qty;
+      if (existing.unit != null && base.unit != null) existing.subtotal = (existing.subtotal || 0) + base.unit * qty;
+      existing.contrib.push(contrib);
+    } else {
+      aggregated.set(key, { ...base, qty, subtotal: base.unit != null ? base.unit * qty : null, contrib: [contrib] });
+    }
+  };
 
-  // Controller — qty × iterations
-  if (setup.brain) {
-    const usedOuts = setup.brain.outputsUsed ?? totals.outputCount;
-    const chained = usedOuts < totals.outputCount;
-    const chainNote = chained ? ` (chained from ${totals.outputCount} strips)` : '';
-    const totalQty = setup.brain.units * iter;
-    rows.push({
-      item: setup.brain.name,
-      notes: `${setup.brain.outputs} outputs each, ${usedOuts} used${chainNote}${iter > 1 ? ` × ${iter} iterations` : ''}`,
-      qty: totalQty,
-      unit: setup.brain.priceUSD,
-      subtotal: setup.brain.priceUSD * totalQty,
-    });
+  for (const { card, cardIdx, iter, setup } of perCardSetups) {
+    if (!setup) continue;
+    const cardLabel = `Strip ${cardIdx + 1}${iter > 1 ? ` × ${iter}` : ''}`;
+    if (setup.brain) {
+      addItem(`brain-${setup.brain.id}`, {
+        item: setup.brain.name,
+        notes: `${setup.brain.outputs} outputs each`,
+        unit: setup.brain.priceUSD,
+      }, setup.brain.units * iter, cardLabel);
+    }
+    const dist = setup.distribution;
+    if (dist?.kind === 'paired' && dist.board) {
+      addItem(`pb-${dist.board.id}`, {
+        item: dist.board.name,
+        notes: `paired w/ brain — ${dist.board.amps} A, ${dist.board.ports} ports`,
+        unit: dist.board.priceUSD,
+      }, dist.count * iter, cardLabel);
+    } else if (dist?.kind === 'central' && dist.board) {
+      addItem(`pb-${dist.board.id}-pdu`, {
+        item: `${dist.board.name} (PDU)`,
+        notes: `${dist.board.amps} A, ${dist.board.ports} fused ports`,
+        unit: dist.board.priceUSD,
+      }, 1 * iter, cardLabel);
+    }
+    for (const { size, count } of setup.psuCombo) {
+      const unit = priceForPSU(size, setup.voltage);
+      addItem(`psu-${setup.voltage}-${size}`, {
+        item: `${size} W ${setup.voltage}V PSU`,
+        notes: setup.voltage <= 24 ? 'Kingneonlux IP67' : '',
+        unit,
+      }, count * iter, cardLabel);
+    }
   }
 
-  // Power board / distribution
-  const dist = setup.distribution;
-  if (dist?.kind === 'paired' && dist.board) {
-    const totalQty = dist.count * iter;
-    rows.push({
-      item: dist.board.name,
-      notes: `paired with brain — ${dist.board.amps} A, ${dist.board.ports} fused ports${iter > 1 ? ` × ${iter} iterations` : ''}`,
-      qty: totalQty,
-      unit: dist.board.priceUSD,
-      subtotal: dist.board.priceUSD * totalQty,
-    });
-  } else if (dist?.kind === 'central' && dist.board) {
-    const totalQty = 1 * iter;
-    rows.push({
-      item: `${dist.board.name} (standalone PDU)`,
-      notes: `${dist.board.amps} A, ${dist.board.ports} fused ports${iter > 1 ? ` × ${iter} iterations` : ''}`,
-      qty: totalQty,
-      unit: dist.board.priceUSD,
-      subtotal: dist.board.priceUSD * totalQty,
-    });
-  }
+  // Build rows from the aggregated map; annotate notes with which strip(s) the item is for
+  const rows = [...aggregated.values()].map(it => ({
+    item: it.item,
+    notes: it.notes + (it.contrib.length > 0 ? ` · for ${it.contrib.join(', ')}` : ''),
+    qty: it.qty,
+    unit: it.unit,
+    subtotal: it.subtotal,
+  }));
 
-  // PSUs — one row per size, qty × iterations
-  for (const { size, count } of setup.psuCombo) {
-    const unit = priceForPSU(size, setup.voltage);
-    const totalQty = count * iter;
-    rows.push({
-      item: `${size} W ${setup.voltage}V PSU`,
-      notes: (setup.voltage <= 24 ? 'Kingneonlux IP67 (waterproof)' : '') + (iter > 1 ? ` × ${iter} iterations` : ''),
-      qty: totalQty,
-      unit,
-      subtotal: unit != null ? unit * totalQty : null,
-    });
-  }
-
-  // Optional split-PSU alternative note when bothEnds is in use
+  // Optional split-PSU alternative note when bothEnds is in use anywhere
   const anyBothEnds = project.strips.some(s => s.injection === 'bothEnds');
-  if (anyBothEnds && setup.psuCombo.length) {
-    const halfCombo = recommendPSUs(setup.psuTarget / 2, setup.voltage);
+  if (anyBothEnds && rows.some(r => /PSU/.test(r.item))) {
     rows.push({
-      item: '— or split for both-ends injection —',
-      notes: `${formatPSUCombo(halfCombo)} at each injection end (no long heavy wiring)`,
-      qty: '',
-      unit: '',
-      subtotal: '',
-      muted: true,
+      item: '— or split per injection end —',
+      notes: 'Halve the PSU size; place one at each strip end (no long heavy wiring)',
+      qty: '', unit: '', subtotal: '', muted: true,
     });
   }
+
+  const fmtUSD = n => formatPrice(n, project.currency);
 
   // Render rows
   bomBody.replaceChildren(...rows.map(r => {
@@ -463,19 +472,22 @@ function paintTotals() {
     ? '⚠ Mixed voltages across strips — recommendation assumes a single supply rail; you may need separate PSU rails per voltage.'
     : '';
 
-  // Output assignment table — chain-aware wiring map
+  // Output assignment table — per-card, since each strip card is its own independent install.
+  // Each iteration of a card has identical wiring → show one map per card with × iter label.
   const outBody = document.querySelector('#output-table tbody');
-  const brains = setup.brain ? assignOutputs(project.strips, setup.brain, getChip) : [];
-  if (brains.length === 0) {
-    outBody.replaceChildren();
-  } else {
-    const trs = [];
-    brains.forEach((outs, brainIdx) => {
+  const trs = [];
+  for (const { card, cardIdx, iter, setup: cardSetup } of perCardSetups) {
+    if (!cardSetup?.brain) continue;
+    const cardBrains = assignOutputs([{ ...card, iterations: 1 }], cardSetup.brain, getChip);
+    cardBrains.forEach((outs, brainIdx) => {
       outs.forEach((out, outIdx) => {
-        const stripList = out.strips.map(s => `Strip ${s.stripIdx}.${s.copy}`).join(' + ');
+        const stripList = out.strips.map(s => `Strip ${cardIdx + 1}.${s.copy}`).join(' + ');
+        const brainCell = outIdx === 0
+          ? `${cardSetup.brain.name} #${brainIdx + 1}${iter > 1 ? ` (× ${iter} iter)` : ''}`
+          : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${outIdx === 0 ? `${setup.brain.name} #${brainIdx + 1}` : ''}</td>
+          <td>${brainCell}</td>
           <td>Out ${outIdx + 1}</td>
           <td>${stripList}${out.strips.length > 1 ? ' (chained)' : ''}</td>
           <td class="num">${out.totalPixels}</td>
@@ -483,8 +495,8 @@ function paintTotals() {
         trs.push(tr);
       });
     });
-    outBody.replaceChildren(...trs);
   }
+  outBody.replaceChildren(...trs);
 }
 
 function syncFromDom() {

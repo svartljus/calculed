@@ -309,8 +309,8 @@ label:has(> input:disabled) { color: var(--muted); }
 [data-results] .stats dt { color: var(--muted); margin: 0; }
 [data-results] .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; display: flex; align-items: baseline; gap: 0.25rem; }
 
-/* Quantity input — narrow */
-input[name="quantity"] { width: 3.5rem; text-align: right; }
+/* Qty / Iter inputs — narrow */
+input[name="quantity"], input[name="iterations"] { width: 3.5rem; text-align: right; }
 
 /* Per-strip notes — borderless inline */
 .strip-notes {

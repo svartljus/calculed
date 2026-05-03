@@ -39,7 +39,8 @@ export function computeProjectTotals(strips, getChip) {
     // silent skip: stale chipId from old localStorage; UI surfaces unknown chips separately
     if (!chip) continue;
     const r = computeStripDraw(s, chip);
-    const q = s.quantity || 1;
+    // Effective qty = qty × iterations (each iteration is a separate physical install)
+    const q = (s.quantity || 1) * (s.iterations || 1);
     totalPower_W   += r.power_W * q;
     totalLeds      += r.ledCount * q;
     totalPixels    += r.pixels * q;
