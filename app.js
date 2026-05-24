@@ -3,6 +3,7 @@ import { computeStripDraw, computeInjection, recommendAWG, recommendFuse, dataRe
 import { CONTROLLERS, recommendControllers } from './src/controllers.js';
 import { recommendSetup, outputsForController, recommendPremiumSetup, assignOutputs } from './src/setup.js';
 import { formatMeanWellCombo } from './src/calc.js';
+import { projectToKagoraSpec } from './src/kagora-export.js';
 
 const STORAGE_KEY = 'calculed:project';
 
@@ -738,6 +739,15 @@ document.getElementById('export-json').addEventListener('click', () => {
 document.getElementById('export-csv').addEventListener('click', () => {
   const filename = `${(project.name || 'calculed').toLowerCase().replace(/\s+/g, '-')}.csv`;
   downloadFile(filename, projectAsCSV(), 'text/csv');
+});
+
+// Export to Kagora — emit the parametric strips[] spec that Kagora's
+// "Import spec…" already reads (see src/kagora-export.js for the field mapping).
+document.getElementById('export-kagora').addEventListener('click', () => {
+  const base = (project.name || 'calculed').toLowerCase().replace(/\s+/g, '-');
+  const filename = `${base}.kagora.json`;
+  const spec = projectToKagoraSpec(project);
+  downloadFile(filename, JSON.stringify(spec, null, 2), 'application/json');
 });
 
 document.getElementById('import-json-btn').addEventListener('click', () => {
